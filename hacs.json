@@ -1,6 +1,6 @@
 {
-  "name": "Daily Walks",
+  "name": "wandr",
   "render_readme": true,
-  "domains": ["daily_walks"],
+  "domains": ["wandr"],
   "homeassistant": "2024.12.0"
 }

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.2-beta
+
+- Renamed remaining user-facing project references to wandr.
+- Removed leftover Daily Walks wording from documentation and labels.
+
+
 ## 1.0.0-beta
 
 Good stopping point / installable beta.
@@ -33,7 +39,7 @@ Good stopping point / installable beta.
 
 ## 0.5.0
 
-- Added daily route assignment.
+- Added route assignment.
 - Added completion/skipping.
 - Added history and progress sensors.
 - Added street-specific blocked sections.

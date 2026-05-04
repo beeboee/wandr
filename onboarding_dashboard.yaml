@@ -1,5 +1,5 @@
-title: Daily Walk Setup
-path: daily-walk-setup
+title: wandr Setup
+path: wandr-setup
 icon: mdi:map-plus
 type: sections
 max_columns: 2
@@ -13,15 +13,15 @@ sections:
       - type: entities
         title: Start Here
         entities:
-          - entity: text.daily_walk_start_address
+          - entity: text.wandr_start_address
             name: Start Address
-          - entity: switch.daily_walk_loop_route
+          - entity: switch.wandr_loop_route
             name: Loop Route
-          - entity: text.daily_walk_end_address
+          - entity: text.wandr_end_address
             name: End Address
-          - entity: number.daily_walk_target_miles
+          - entity: number.wandr_target_miles
             name: Desired Miles
-          - entity: number.daily_walk_pace
+          - entity: number.wandr_pace
             name: Walking Pace
 
   - type: grid
@@ -33,13 +33,13 @@ sections:
       - type: entities
         title: How routes should feel
         entities:
-          - entity: select.daily_walk_route_style
+          - entity: select.wandr_route_style
             name: Route Style
-          - entity: select.daily_walk_a_to_b_goal_mode
+          - entity: select.wandr_a_to_b_goal_mode
             name: A-to-B Goal Mode
-          - entity: switch.daily_walk_allow_relaxed_fallback
+          - entity: switch.wandr_allow_relaxed_fallback
             name: Relaxed Fallback
-          - entity: number.daily_walk_base_route_count
+          - entity: number.wandr_base_route_count
             name: Base Route Count
 
   - type: grid
@@ -49,7 +49,7 @@ sections:
         heading_style: title
         icon: mdi:refresh
       - type: button
-        entity: button.daily_walk_generate_routes
+        entity: button.wandr_generate_routes
         name: Generate Routes
         icon: mdi:refresh
         tap_action:
@@ -57,10 +57,10 @@ sections:
       - type: entities
         title: Generator Status
         entities:
-          - entity: sensor.daily_walk_generation_status
-          - entity: sensor.daily_walk_last_generation_summary
-          - entity: sensor.daily_walk_validation_warnings
-          - entity: sensor.daily_walk_last_error
+          - entity: sensor.wandr_generation_status
+          - entity: sensor.wandr_last_generation_summary
+          - entity: sensor.wandr_validation_warnings
+          - entity: sensor.wandr_last_error
 
   - type: grid
     cards:
@@ -71,19 +71,19 @@ sections:
       - type: entities
         title: Today's Route
         entities:
-          - entity: sensor.daily_walk_route_name
-          - entity: sensor.daily_walk_distance
-          - entity: sensor.daily_walk_estimated_duration
-          - entity: sensor.daily_walk_route_quality_score
+          - entity: sensor.wandr_route_name
+          - entity: sensor.wandr_distance
+          - entity: sensor.wandr_estimated_duration
+          - entity: sensor.wandr_route_quality_score
       - type: horizontal-stack
         cards:
           - type: button
-            entity: button.daily_walk_pick_today_route
+            entity: button.wandr_pick_today_route
             name: Pick Today
             tap_action:
               action: press
           - type: button
-            entity: button.daily_walk_mark_completed
+            entity: button.wandr_mark_completed
             name: Complete
             tap_action:
               action: press
