@@ -22,6 +22,7 @@
       }
     },
     "error": {
+      "start_required": "Start address is required.",
       "end_required": "End address is required when loop route is off."
     }
   }
