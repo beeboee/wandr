@@ -1,15 +1,26 @@
 from __future__ import annotations
 
+from pathlib import Path
+
+from homeassistant.components.http import StaticPathConfig, async_register_static_paths
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 
 from .const import DOMAIN, PLATFORMS
 from .coordinator import WandrCoordinator
 
+FRONTEND_DIR = Path(__file__).parent / "frontend"
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator = WandrCoordinator(hass, entry)
     await coordinator.async_load()
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
+
+    await async_register_static_paths(
+        hass,
+        [StaticPathConfig(f"/{DOMAIN}/frontend", str(FRONTEND_DIR), False)],
+    )
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     async def get_coord() -> WandrCoordinator:
