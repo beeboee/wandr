@@ -8,6 +8,8 @@ from homeassistant.core import HomeAssistant, ServiceCall
 
 from .const import DOMAIN, PLATFORMS
 from .coordinator import WandrCoordinator
+from . import coordinator as wandr_coordinator
+from .map_html import render_map_html as live_render_map_html
 
 _LOGGER = logging.getLogger(__name__)
 FRONTEND_DIR = Path(__file__).parent / "frontend"
@@ -42,6 +44,8 @@ async def _register_frontend_path(hass: HomeAssistant) -> None:
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    wandr_coordinator.render_map_html = live_render_map_html
+
     coordinator = WandrCoordinator(hass, entry)
     await coordinator.async_load()
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
