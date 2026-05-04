@@ -1,0 +1,41 @@
+type: custom:button-card
+entity: sensor.wandr_route_name
+name: Today's Route
+icon: mdi:walk
+show_state: true
+show_label: true
+label: >
+  [[[
+    const miles = states['sensor.wandr_distance']?.state ?? '—';
+    const duration = states['sensor.wandr_estimated_duration']?.state ?? '—';
+    const elevation = states['sensor.wandr_elevation_gain']?.state ?? '—';
+    const quality = states['sensor.wandr_route_quality_score']?.state ?? '—';
+    return `${miles} • ${duration} • ${elevation} gain • Quality ${quality}`;
+  ]]]
+styles:
+  card:
+    - border-radius: 24px
+    - padding: 20px
+    - background: linear-gradient(135deg, rgba(36,179,59,0.18), rgba(36,179,59,0.04))
+    - border: 1px solid rgba(36,179,59,0.22)
+  grid:
+    - grid-template-areas: 'i n' 'i s' 'i l'
+    - grid-template-columns: 56px 1fr
+    - grid-template-rows: min-content min-content min-content
+  icon:
+    - color: '#24B33B'
+    - width: 42px
+  name:
+    - justify-self: start
+    - font-size: 14px
+    - font-weight: 700
+    - opacity: 0.72
+  state:
+    - justify-self: start
+    - font-size: 22px
+    - font-weight: 800
+    - white-space: normal
+  label:
+    - justify-self: start
+    - font-size: 13px
+    - opacity: 0.72
