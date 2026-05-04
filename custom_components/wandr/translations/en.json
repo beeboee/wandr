@@ -15,7 +15,9 @@
           "ab_extra_percent": "A-to-B extra distance over optimal route, percent",
           "ab_extra_minutes": "A-to-B extra walking time over optimal route, minutes",
           "ab_extra_miles": "A-to-B extra distance over optimal route, miles",
-          "ab_finish_time": "A-to-B finish-by time, HH:MM:SS"
+          "ab_finish_time": "A-to-B finish-by time, HH:MM:SS",
+          "route_style": "Route style",
+          "allow_relaxed_fallback": "Allow relaxed fallback if strict route generation fails"
         }
       }
     },
