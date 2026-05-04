@@ -1,0 +1,180 @@
+generate_year:
+  name: Generate routes
+  description: Downloads nearby OSM walkable ways and generates route options.
+  fields: {}
+next_route:
+  name: Next route
+  description: Moves to the next route.
+  fields: {}
+previous_route:
+  name: Previous route
+  description: Moves to the previous route.
+  fields: {}
+random_route:
+  name: Random route
+  description: Picks a random generated route.
+  fields: {}
+pick_daily_route:
+  name: Pick today's route
+  description: Assigns a route for today and resets today's completed/skipped state.
+  fields: {}
+mark_completed:
+  name: Mark completed
+  description: Marks today's selected route as completed and writes a history entry.
+  fields: {}
+skip_today:
+  name: Skip today
+  description: Marks today's selected route as skipped and writes a history entry.
+  fields: {}
+set_blacklist:
+  name: Set blacklist
+  description: Sets comma-separated street/area names to avoid, then regenerates routes.
+  fields:
+    blacklist:
+      name: Blacklist
+      required: true
+      selector:
+        text:
+set_a_to_b_deviation:
+  name: Set A-to-B goal mode
+  description: Sets A-to-B routing behavior, then regenerates routes. Ignored for loop routes.
+  fields:
+    mode:
+      name: Goal mode
+      required: true
+      selector:
+        select:
+          options:
+            - Desired total distance
+            - Distance over optimal
+            - Percent over optimal
+            - Time over optimal
+            - Finish by time
+    total_miles:
+      name: Desired total miles
+      required: false
+      selector:
+        number:
+          min: 0.25
+          max: 15
+          step: 0.1
+          unit_of_measurement: mi
+    extra_miles:
+      name: Extra miles over optimal
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 15
+          step: 0.1
+          unit_of_measurement: mi
+    percent:
+      name: Extra percent over optimal
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 300
+          step: 1
+          unit_of_measurement: "%"
+    minutes:
+      name: Extra minutes over optimal
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 240
+          step: 5
+          unit_of_measurement: min
+    finish_time:
+      name: Finish by time
+      required: false
+      selector:
+        time:
+set_a_to_b_goal:
+  name: Set A-to-B goal
+  description: Sets A-to-B routing behavior, then regenerates routes. Ignored for loop routes.
+  fields:
+    mode:
+      name: Goal mode
+      required: true
+      selector:
+        select:
+          options:
+            - Desired total distance
+            - Distance over optimal
+            - Percent over optimal
+            - Time over optimal
+            - Finish by time
+    total_miles:
+      name: Desired total miles
+      required: false
+      selector:
+        number:
+          min: 0.25
+          max: 15
+          step: 0.1
+          unit_of_measurement: mi
+    extra_miles:
+      name: Extra miles over optimal
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 15
+          step: 0.1
+          unit_of_measurement: mi
+    percent:
+      name: Extra percent over optimal
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 300
+          step: 1
+          unit_of_measurement: "%"
+    minutes:
+      name: Extra minutes over optimal
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 240
+          step: 5
+          unit_of_measurement: min
+    finish_time:
+      name: Finish by time
+      required: false
+      selector:
+        time:
+add_blocked_section:
+  name: Add blocked street section
+  description: Adds a street or street section to the avoid list, then regenerates routes.
+  fields:
+    street:
+      name: Street
+      required: false
+      selector:
+        text:
+    from_cross:
+      name: From cross street
+      required: false
+      selector:
+        text:
+    to_cross:
+      name: To cross street
+      required: false
+      selector:
+        text:
+clear_history:
+  name: Clear history
+  description: Clears completion/skip history.
+  fields: {}
+export_settings:
+  name: Export settings
+  description: Writes the current settings to /local/wandr/settings_export.json.
+  fields: {}
+import_settings:
+  name: Import settings
+  description: Imports settings from /config/www/wandr/settings_import.json. Generate routes afterward to apply routing changes.
+  fields: {}
