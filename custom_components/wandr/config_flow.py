@@ -48,6 +48,16 @@ class WandrConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input=None):
         if user_input is not None:
             data = dict(user_input)
+            data["start_address"] = (data.get("start_address") or "").strip()
+            data["end_address"] = (data.get("end_address") or "").strip()
+
+            if not data["start_address"]:
+                return self.async_show_form(
+                    step_id="user",
+                    data_schema=self._schema(data),
+                    errors={"start_address": "start_required"},
+                )
+
             # For loop routes, keep end_address synced with start_address even if the form field is left blank.
             if data.get("loop_route", True):
                 data["end_address"] = data.get("start_address")
