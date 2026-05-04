@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from homeassistant.components.http import StaticPathConfig, async_register_static_paths
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 
@@ -11,15 +10,26 @@ from .coordinator import WandrCoordinator
 
 FRONTEND_DIR = Path(__file__).parent / "frontend"
 
+
+def _register_frontend_path(hass: HomeAssistant) -> None:
+    """Register the bundled Lovelace card path.
+
+    Home Assistant has used different helpers for static paths across versions.
+    Keep this compatible so config flow loading does not fail on older installs.
+    """
+    hass.http.register_static_path(
+        f"/{DOMAIN}/frontend",
+        str(FRONTEND_DIR),
+        cache_headers=False,
+    )
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator = WandrCoordinator(hass, entry)
     await coordinator.async_load()
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
 
-    await async_register_static_paths(
-        hass,
-        [StaticPathConfig(f"/{DOMAIN}/frontend", str(FRONTEND_DIR), False)],
-    )
+    _register_frontend_path(hass)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
