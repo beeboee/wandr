@@ -6,17 +6,48 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, A_TO_B_GOAL_MODES, ROUTE_STYLES, DEFAULT_ROUTE_STYLE
+from .const import (
+    DOMAIN,
+    A_TO_B_GOAL_MODES,
+    ROUTE_STYLES,
+    DEFAULT_ROUTE_STYLE,
+    GENERATION_TYPES,
+    DEFAULT_GENERATION_TYPE,
+    MAP_APPS,
+    DEFAULT_MAP_APP,
+)
 from .coordinator import section_label
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     coordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities([
+        WandrGenerationTypeSelect(coordinator, entry),
         WandrDeviationModeSelect(coordinator, entry),
         WandrRouteStyleSelect(coordinator, entry),
+        WandrMapAppSelect(coordinator, entry),
         WandrCurrentStreetSelect(coordinator, entry),
         WandrBlockedSectionSelect(coordinator, entry),
     ])
+
+class WandrGenerationTypeSelect(CoordinatorEntity, SelectEntity):
+    _attr_options = GENERATION_TYPES
+    _attr_icon = "mdi:map-marker-path"
+
+    def __init__(self, coordinator, entry):
+        super().__init__(coordinator)
+        self._attr_name = "wandr Generation Type"
+        self._attr_unique_id = f"{entry.entry_id}_generation_type_select"
+
+    @property
+    def current_option(self) -> str:
+        loop_route = self.coordinator.state.get("loop_route")
+        if loop_route is None:
+            loop_route = self.coordinator.entry.data.get("loop_route", True)
+        return "Loop route" if loop_route else "A-to-B route"
+
+    async def async_select_option(self, option: str) -> None:
+        if option in self.options:
+            await self.coordinator.update_option("loop_route", option == "Loop route")
 
 class WandrDeviationModeSelect(CoordinatorEntity, SelectEntity):
     _attr_options = A_TO_B_GOAL_MODES
@@ -53,6 +84,24 @@ class WandrRouteStyleSelect(CoordinatorEntity, SelectEntity):
     async def async_select_option(self, option: str) -> None:
         if option in self.options:
             await self.coordinator.update_option("route_style", option)
+
+class WandrMapAppSelect(CoordinatorEntity, SelectEntity):
+    _attr_options = MAP_APPS
+    _attr_icon = "mdi:map"
+
+    def __init__(self, coordinator, entry):
+        super().__init__(coordinator)
+        self._attr_name = "wandr Map App"
+        self._attr_unique_id = f"{entry.entry_id}_map_app_select"
+
+    @property
+    def current_option(self) -> str:
+        value = self.coordinator.state.get("map_app") or self.coordinator.entry.data.get("map_app") or DEFAULT_MAP_APP
+        return value if value in self.options else DEFAULT_MAP_APP
+
+    async def async_select_option(self, option: str) -> None:
+        if option in self.options:
+            await self.coordinator.update_option("map_app", option)
 
 class WandrCurrentStreetSelect(CoordinatorEntity, SelectEntity):
     _attr_icon = "mdi:road-variant"
