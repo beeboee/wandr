@@ -4,7 +4,7 @@
 # wandr for Home Assistant
 </div>
 
-**Current version:** `1.0.3-beta`
+**Current version:** `1.0.4-beta`
 
 wandr is a Home Assistant custom integration for generating rotating walkable routes and exposing the route controls as normal Home Assistant entities, so you can build your own dashboard around it.
 
