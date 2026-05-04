@@ -3,8 +3,8 @@ PLATFORMS = ["sensor", "binary_sensor", "switch", "select", "number", "text", "b
 STORAGE_KEY = "wandr_storage"
 STORAGE_VERSION = 2
 
-DEFAULT_START_ADDRESS = "7050 N Montana Ave, Portland, OR"
-DEFAULT_END_ADDRESS = "7050 N Montana Ave, Portland, OR"
+DEFAULT_START_ADDRESS = ""
+DEFAULT_END_ADDRESS = ""
 DEFAULT_LOOP_ROUTE = True
 DEFAULT_TARGET_MILES = 3.0
 DEFAULT_ROUTE_COUNT = 183
