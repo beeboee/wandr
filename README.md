@@ -46,109 +46,44 @@ It is not affiliated with Home Assistant, HACS, Google Maps, OpenStreetMap, Nomi
 - Turn-by-turn style directions page
 - GPX and GeoJSON exports
 - Settings export/import support
+- Optional configurable Lovelace card for building a wandr dashboard
 
-## Repository structure
+## Install with HACS
 
-For HACS to detect this repository correctly, the repo must contain the integration folder at this exact path:
+This is the recommended install method.
 
-```text
-custom_components/wandr/manifest.json
-```
-
-A correct repo root should look like this:
-
-```text
-wandr/
-├── custom_components/
-│   └── wandr/
-│       ├── __init__.py
-│       ├── manifest.json
-│       ├── config_flow.py
-│       ├── coordinator.py
-│       ├── sensor.py
-│       ├── switch.py
-│       ├── select.py
-│       ├── number.py
-│       ├── text.py
-│       ├── button.py
-│       ├── binary_sensor.py
-│       ├── time.py
-│       ├── services.yaml
-│       ├── strings.json
-│       └── translations/
-│           └── en.json
-├── hacs.json
-├── README.md
-├── CHANGELOG.md
-├── dashboard.yaml
-└── onboarding_dashboard.yaml
-```
-
-If HACS says **“Repository structure is not compliant”**, the most likely cause is that `custom_components/wandr/` was not uploaded to GitHub.
-
-## Install with HACS as a custom repository
-
-This is the recommended install method once the GitHub repo structure is correct.
-
-1. Make sure this repository contains:
-
-   ```text
-   custom_components/wandr/manifest.json
-   ```
-
-2. In Home Assistant, open **HACS**.
-
-3. Open the three-dot menu in the top right.
-
-4. Choose **Custom repositories**.
-
-5. Paste the GitHub repository URL, for example:
+1. In Home Assistant, open **HACS**.
+2. Open the three-dot menu in the top right.
+3. Choose **Custom repositories**.
+4. Paste this repository URL:
 
    ```text
    https://github.com/beeboee/wandr
    ```
 
-6. Set the category to **Integration**.
+5. Set the category to **Integration**.
+6. Click **Add**.
+7. Find **wandr** in HACS and install it.
+8. Restart Home Assistant.
+9. Add the integration:
 
-7. Click **Add**.
-
-8. Find **wandr** in HACS and install it.
-
-9. Restart Home Assistant.
-
-10. Add the integration:
-
-    ```text
-    Settings → Devices & services → Add integration → wandr
-    ```
+   ```text
+   Settings → Devices & services → Add integration → wandr
+   ```
 
 ## Manual install
 
-Use this if you want to test wandr before setting up HACS.
+Use this if you want to test wandr without HACS.
 
-1. Download or clone this repository.
-
-2. Copy this folder:
-
-   ```text
-   custom_components/wandr
-   ```
-
-3. Paste it into your Home Assistant config folder here:
+1. Download this repository.
+2. Copy the `wandr` integration folder into Home Assistant:
 
    ```text
    /config/custom_components/wandr
    ```
 
-4. Confirm the final path looks like this:
-
-   ```text
-   /config/custom_components/wandr/manifest.json
-   ```
-
-5. Restart Home Assistant.
-
-6. Add the integration:
+3. Restart Home Assistant.
+4. Add the integration:
 
    ```text
    Settings → Devices & services → Add integration → wandr
@@ -171,22 +106,60 @@ After adding the integration:
 
 ## Dashboard setup
 
-wandr does not automatically replace your Home Assistant dashboard. It exposes entities that you can use in any dashboard.
+wandr includes a configurable Lovelace card that can show as many or as few wandr sections as you want.
 
-This repo includes two example dashboard files:
+First, add this Lovelace resource:
 
 ```text
-onboarding_dashboard.yaml
-dashboard.yaml
+URL: /wandr/frontend/wandr-card.js
+Resource type: JavaScript Module
 ```
 
-Recommended setup:
+Then add the card to a dashboard:
 
-1. Create a temporary dashboard/view called **wandr Setup**.
-2. Use `onboarding_dashboard.yaml` while configuring the integration.
-3. Create your normal daily dashboard/view called **wandr**.
-4. Use `dashboard.yaml` as the starting point.
-5. Edit the cards however you like.
+```yaml
+type: custom:wandr-card
+title: wandr
+columns: 2
+sections:
+  - summary
+  - stats
+  - remote
+  - map
+  - directions
+  - progress
+```
+
+You can also make smaller cards by choosing fewer sections:
+
+```yaml
+type: custom:wandr-card
+title: Route Remote
+columns: 1
+sections:
+  - remote
+```
+
+Available sections:
+
+```text
+summary
+stats
+remote
+map
+directions
+progress
+setup
+a_to_b
+avoid
+export
+```
+
+The card follows Home Assistant theme variables by default. If your theme defines a primary color, wandr uses it. You can optionally define a wandr-specific accent in your theme:
+
+```yaml
+wandr-accent-color: '#24B33B'
+```
 
 The generated route files are available at:
 
@@ -198,17 +171,6 @@ The generated route files are available at:
 /local/wandr/history.json
 /local/wandr/settings_export.json
 ```
-
-A useful dashboard usually includes:
-
-- Today’s route summary
-- Open in Google Maps button
-- Route map iframe/card
-- Directions iframe/card
-- Mark Complete and Skip buttons
-- Route generation controls
-- Street/segment blocking controls
-- Weekly/monthly progress cards
 
 ## Main entities
 
