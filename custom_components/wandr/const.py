@@ -6,6 +6,11 @@ STORAGE_VERSION = 2
 DEFAULT_START_ADDRESS = ""
 DEFAULT_END_ADDRESS = ""
 DEFAULT_LOOP_ROUTE = True
+DEFAULT_GENERATION_TYPE = "Loop route"
+GENERATION_TYPES = [
+    "Loop route",
+    "A-to-B route",
+]
 DEFAULT_TARGET_MILES = 3.0
 DEFAULT_ROUTE_COUNT = 183
 DEFAULT_RADIUS_METERS = 3000
@@ -32,5 +37,12 @@ ROUTE_STYLES = [
     "Most Variety",
     "Direct-ish",
     "Parks / Paths",
+]
+DEFAULT_MAP_APP = "Google Maps"
+MAP_APPS = [
+    "Google Maps",
+    "Apple Maps",
+    "Waze",
+    "OpenStreetMap",
 ]
 DEFAULT_ALLOW_RELAXED_FALLBACK = True
