@@ -1,6 +1,6 @@
-# Daily Walks for Home Assistant
+# wandr for Home Assistant
 
-Daily Walks generates rotating walkable routes and exposes the controls as normal Home Assistant entities so users can build their own dashboard.
+wandr generates rotating walkable routes and exposes the controls as normal Home Assistant entities so users can build their own dashboard.
 
 ## Current status
 
@@ -44,7 +44,7 @@ This is a polished beta package. It is installable through HACS as a custom repo
 3. Category: Integration.
 4. Install.
 5. Restart Home Assistant.
-6. Add the integration from Settings → Devices & services → Add integration → Daily Walks.
+6. Add the integration from Settings → Devices & services → Add integration → wandr.
 
 ## Basic use
 
