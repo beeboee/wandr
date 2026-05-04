@@ -30,6 +30,7 @@ SENSORS = [
     ("blacklist", "Blacklist", None, "mdi:cancel"),
     ("blocked_sections_count", "Blocked Street Sections", None, "mdi:road-variant"),
     ("blocked_sections_list", "Avoid List", None, "mdi:format-list-bulleted"),
+    ("configured_route_count", "Configured Route Count", None, "mdi:counter"),
     ("route_count", "Generated Route Count", None, "mdi:counter"),
     ("day_number", "Day Number", None, "mdi:calendar-today"),
     ("today_status", "Today Status", None, "mdi:checkbox-marked-circle-outline"),
@@ -130,6 +131,8 @@ class WandrSensor(CoordinatorEntity, SensorEntity):
                 return "None"
             labels = [section_label(s) for s in sections]
             return "; ".join(labels[:5]) + ("; …" if len(labels) > 5 else "")
+        if self._key == "configured_route_count":
+            return state.get("route_count") or self.coordinator.entry.data.get("route_count")
         if self._key == "route_count":
             return len(state.get("routes") or [])
         if self._key == "day_number":
@@ -199,6 +202,10 @@ def preferred_map_url(route: dict, map_app: str) -> str:
         waypoint_coords = waypoint_coords[::step][:8]
     waypoints = "|".join(f"{a},{b}" for a, b in waypoint_coords)
 
+    if map_app == "Ask every time":
+        # Android may show an app chooser for geo: links when no default map app is pinned.
+        # If Android already has a default app, it may still open that default directly.
+        return "geo:" + quote_plus(dest) + "?q=" + quote_plus(dest + "(wandr route)")
     if map_app == "Apple Maps":
         # Apple Maps URLs do not support as rich a walking waypoint flow, so use origin/destination.
         return "https://maps.apple.com/?dirflg=w&saddr=" + quote_plus(origin) + "&daddr=" + quote_plus(dest)
