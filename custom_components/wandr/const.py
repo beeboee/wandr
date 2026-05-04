@@ -38,8 +38,9 @@ ROUTE_STYLES = [
     "Direct-ish",
     "Parks / Paths",
 ]
-DEFAULT_MAP_APP = "Google Maps"
+DEFAULT_MAP_APP = "Ask every time"
 MAP_APPS = [
+    "Ask every time",
     "Google Maps",
     "Apple Maps",
     "Waze",
