@@ -1,0 +1,17 @@
+{
+  "domain": "wandr",
+  "name": "wandr",
+  "codeowners": [
+    "@beeboee"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "http"
+  ],
+  "documentation": "https://github.com/beeboee/wandr",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/beeboee/wandr/issues",
+  "requirements": [],
+  "version": "1.0.0-beta"
+}

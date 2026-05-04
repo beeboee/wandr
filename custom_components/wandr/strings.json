@@ -1,0 +1,26 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "wandr",
+        "description": "Generate walking routes from a start address. Loop routes use desired total miles. A-to-B routes use a selectable goal mode: total distance, extra distance, percent over optimal, extra time, or finish-by time.",
+        "data": {
+          "start_address": "Start address",
+          "loop_route": "Loop route: start and end at the same address",
+          "end_address": "End address, used only when loop route is off",
+          "target_miles": "Desired total miles",
+          "route_count": "Base route count",
+          "walking_minutes_per_mile": "Walking speed, minutes per mile",
+          "ab_extra_mode": "A-to-B goal mode",
+          "ab_extra_percent": "A-to-B extra distance over optimal route, percent",
+          "ab_extra_minutes": "A-to-B extra walking time over optimal route, minutes",
+          "ab_extra_miles": "A-to-B extra distance over optimal route, miles",
+          "ab_finish_time": "A-to-B finish-by time, HH:MM:SS"
+        }
+      }
+    },
+    "error": {
+      "end_required": "End address is required when loop route is off."
+    }
+  }
+}
