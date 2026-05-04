@@ -6,106 +6,13 @@ max_columns: 2
 sections:
   - type: grid
     cards:
-      - type: heading
-        heading: Today
-        heading_style: title
-        icon: mdi:walk
-
-      - type: entities
-        title: Current Route
-        show_header_toggle: false
-        entities:
-          - entity: sensor.wandr_route_name
-            name: Route
-          - entity: sensor.wandr_mode
-            name: Type
-          - entity: sensor.wandr_distance
-            name: Distance
-          - entity: sensor.wandr_estimated_duration
-            name: Duration
-          - entity: sensor.wandr_elevation_gain
-            name: Elevation
-          - entity: sensor.wandr_route_quality_score
-            name: Quality
-          - entity: sensor.wandr_today_status
-            name: Today
-
-      - type: grid
-        columns: 2
-        square: false
-        cards:
-          - type: button
-            entity: button.wandr_previous_route
-            name: Previous
-            icon: mdi:chevron-left
-            tap_action:
-              action: press
-          - type: button
-            entity: button.wandr_next_route
-            name: Next
-            icon: mdi:chevron-right
-            tap_action:
-              action: press
-          - type: button
-            entity: button.wandr_random_route
-            name: Random
-            icon: mdi:shuffle-variant
-            tap_action:
-              action: press
-          - type: button
-            entity: button.wandr_pick_today_route
-            name: Use Today
-            icon: mdi:calendar-today
-            tap_action:
-              action: press
-          - type: button
-            entity: button.wandr_mark_completed
-            name: Done
-            icon: mdi:check-circle
-            tap_action:
-              action: press
-          - type: button
-            entity: button.wandr_skip_today
-            name: Skip
-            icon: mdi:skip-next-circle
-            tap_action:
-              action: press
-
-      - type: iframe
-        title: Map
-        url: /local/wandr/current_route.html?v=106
-        aspect_ratio: 80%
+      - type: custom:wandr-route-card
+        route_entity: sensor.wandr_route_name
+        json_url: /local/wandr/current_route.json
 
   - type: grid
     cards:
-      - type: heading
-        heading: Navigate
-        heading_style: title
-        icon: mdi:map
-
-      - type: entities
-        title: Map App
-        show_header_toggle: false
-        entities:
-          - entity: select.wandr_map_app
-            name: Preferred App
-          - entity: sensor.wandr_map_app
-            name: Current App
-          - entity: sensor.wandr_preferred_map_url
-            name: Open URL
-
-      - type: custom:button-card
-        name: Open Route
-        icon: mdi:map-marker-path
-        tap_action:
-          action: url
-          url_path: |
-            [[[ return states['sensor.wandr_preferred_map_url']?.state || states['sensor.wandr_google_maps_url'].state; ]]]
-
-      - type: iframe
-        title: Directions
-        url: /local/wandr/current_directions.html?v=106
-        aspect_ratio: 70%
+      - type: custom:wandr-avoid-card
 
   - type: grid
     cards:
@@ -115,21 +22,21 @@ sections:
         icon: mdi:tune
 
       - type: entities
-        title: Basic Route Settings
+        title: Route Settings
         show_header_toggle: false
         entities:
           - entity: select.wandr_generation_type
-            name: Generation Type
+            name: Type
           - entity: text.wandr_start_address
-            name: Start Address
+            name: Start
           - entity: text.wandr_end_address
-            name: End Address
+            name: End
           - entity: number.wandr_target_miles
             name: Target Miles
           - entity: number.wandr_pace
             name: Pace
           - entity: select.wandr_route_style
-            name: Route Style
+            name: Style
           - entity: number.wandr_base_route_count
             name: Route Count
           - entity: switch.wandr_allow_relaxed_fallback
@@ -140,7 +47,7 @@ sections:
         show_header_toggle: false
         entities:
           - entity: select.wandr_a_to_b_goal_mode
-            name: Goal Mode
+            name: Goal
           - entity: number.wandr_a_to_b_extra_miles
             name: Extra Miles
           - entity: number.wandr_a_to_b_extra_percent
@@ -150,7 +57,7 @@ sections:
           - entity: time.wandr_a_to_b_finish_by_time
             name: Finish By
           - entity: sensor.wandr_a_to_b_goal_plan
-            name: Goal Summary
+            name: Summary
 
       - type: button
         entity: button.wandr_generate_routes
@@ -160,7 +67,7 @@ sections:
           action: press
 
       - type: entities
-        title: Generator Status
+        title: Status
         show_header_toggle: false
         entities:
           - entity: sensor.wandr_generation_status
@@ -179,60 +86,21 @@ sections:
   - type: grid
     cards:
       - type: heading
-        heading: Avoid List
+        heading: Navigate
         heading_style: title
-        icon: mdi:map-marker-remove
+        icon: mdi:map
 
       - type: entities
-        title: Add Avoid Item
+        title: Map App
         show_header_toggle: false
         entities:
-          - entity: select.wandr_current_route_street
-            name: Pick From Current Route
-          - entity: text.wandr_street_to_avoid
-            name: Street / Path / Alley
-          - entity: text.wandr_avoid_from_cross_street
-            name: From Cross Street
-          - entity: text.wandr_avoid_to_cross_street
-            name: To Cross Street
-
-      - type: grid
-        columns: 2
-        square: false
-        cards:
-          - type: button
-            entity: button.wandr_avoid_selected_street_section
-            name: Add Avoid Item
-            icon: mdi:map-marker-remove
-            tap_action:
-              action: press
-          - type: button
-            entity: button.wandr_remove_blocked_street_section
-            name: Remove Selected
-            icon: mdi:delete
-            tap_action:
-              action: press
+          - entity: select.wandr_map_app
+            name: Preferred App
+          - entity: sensor.wandr_preferred_map_url
+            name: Open URL
 
       - type: entities
-        title: Current Avoid List
-        show_header_toggle: false
-        entities:
-          - entity: select.wandr_blocked_street_section
-            name: Selected Item
-          - entity: sensor.wandr_avoid_list
-            name: Items
-          - entity: sensor.wandr_blocked_street_sections
-            name: Count
-
-  - type: grid
-    cards:
-      - type: heading
-        heading: Progress
-        heading_style: title
-        icon: mdi:chart-line
-
-      - type: entities
-        title: Walking Progress
+        title: Progress
         show_header_toggle: false
         entities:
           - entity: sensor.wandr_current_streak
