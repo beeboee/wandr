@@ -4,11 +4,11 @@
 # wandr for Home Assistant
 </div>
 
-**Current version:** `1.0.4-beta`
+**Current version:** `1.0.6-beta`
 
 wandr is a Home Assistant custom integration for generating rotating walkable routes and exposing the route controls as normal Home Assistant entities, so you can build your own dashboard around it.
 
-It supports loop routes, A-to-B routes, configurable route goals, street/segment blocking, daily route assignment, completion tracking, route history, route style preferences, Google Maps links, GPX/GeoJSON export, and mobile-friendly dashboard examples.
+It supports loop routes, A-to-B routes, configurable route goals, street/segment blocking, daily route assignment, completion tracking, route history, route style preferences, Google Maps links, GPX/GeoJSON export, and app-style dashboard cards.
 
 > **AI-generated code notice:** This project contains AI-generated code. Treat it as experimental community software. Review and test it before relying on it for daily use, safety decisions, or a production Home Assistant setup.
 
@@ -59,7 +59,9 @@ api.opentopodata.org
 - Daily route assignment
 - Completed/skipped tracking
 - History, streak, weekly, and monthly progress sensors
-- Street-specific avoid/block list with optional cross-street bounds
+- Street recognition from the current route for easier avoid rules
+- Manual street/segment blocking with optional cross-street bounds
+- Blocked-section list with remove action
 - Best-effort route quality scoring
 - Relaxed fallback mode when strict generation fails
 - Google Maps tap-to-open URL
@@ -67,7 +69,7 @@ api.opentopodata.org
 - Turn-by-turn style directions page
 - GPX and GeoJSON exports
 - Settings export/import support
-- Optional configurable Lovelace card for building a wandr dashboard
+- Optional configurable Lovelace cards for building a wandr dashboard
 
 ## Install with HACS
 
@@ -131,7 +133,15 @@ After adding the integration:
 
 ## Dashboard setup
 
-wandr includes a configurable Lovelace card that can show as many or as few wandr sections as you want.
+wandr includes multiple Lovelace cards. The normal card picker should show these options after the resource is loaded:
+
+```text
+wandr Daily Walk
+wandr Route Planner
+wandr Avoid Segments
+wandr Stats
+wandr Custom Layout
+```
 
 First, add this Lovelace resource:
 
@@ -140,50 +150,131 @@ URL: /wandr/frontend/wandr-card.js
 Resource type: JavaScript Module
 ```
 
-Then add the card to a dashboard:
-
-```yaml
-type: custom:wandr-card
-title: wandr
-columns: 2
-sections:
-  - summary
-  - stats
-  - remote
-  - map
-  - directions
-  - progress
-```
-
-You can also make smaller cards by choosing fewer sections:
-
-```yaml
-type: custom:wandr-card
-title: Route Remote
-columns: 1
-sections:
-  - remote
-```
-
-Available sections:
+If you are updating the card and your browser keeps showing an old version, add a cache-buster:
 
 ```text
-summary
-stats
-remote
-map
-directions
-progress
-setup
-a_to_b
-avoid
-export
+/wandr/frontend/wandr-card.js?v=6
 ```
 
-The card follows Home Assistant theme variables by default. If your theme defines a primary color, wandr uses it. You can optionally define a wandr-specific accent in your theme:
+### Daily Walk card
+
+This is the recommended main dashboard card. It is app-style and focuses on the current route.
 
 ```yaml
-wandr-accent-color: '#24B33B'
+type: custom:wandr-daily-card
+```
+
+Equivalent advanced form:
+
+```yaml
+type: custom:wandr-card
+layout: daily
+```
+
+The Daily Walk card shows:
+
+```text
+Distance / duration / climb
+Large route map
+A-to-B destination shortcut
+Previous / Random / Next
+Today / Maps / Done / Skip
+Compact monthly and streak stats
+```
+
+### Route Planner card
+
+Use this for route setup and generation controls.
+
+```yaml
+type: custom:wandr-planner-card
+```
+
+Equivalent advanced form:
+
+```yaml
+type: custom:wandr-card
+layout: planner
+```
+
+The Route Planner card shows start/end address, route type, desired miles, pace, route style, map app, relaxed fallback, A-to-B goal settings, and generation controls.
+
+### Avoid Segments card
+
+Use this when you want to block a street or part of a street.
+
+```yaml
+type: custom:wandr-avoid-card
+```
+
+Equivalent advanced form:
+
+```yaml
+type: custom:wandr-card
+layout: avoid
+```
+
+The Avoid Segments card is designed around two workflows:
+
+1. **Recognized street workflow**
+   - Generate a route.
+   - Open the Avoid Segments card.
+   - Tap **Recognized route street** and choose a street from the current route.
+   - Optionally set **From cross street** and **To cross street**.
+   - Press **Add**.
+
+2. **Manual input workflow**
+   - Tap **Street to avoid** and type a street name.
+   - Optionally set **From cross street** and **To cross street**.
+   - Press **Add**.
+
+The blocked list is shown as **Blocked list**. Select an existing blocked segment, then press **Remove** to delete it. Press **Regenerate** afterward if you want to immediately rebuild routes around the updated avoid list.
+
+Street recognition depends on the streets present in the current generated route. Cross-street matching depends on OpenStreetMap data quality.
+
+### Stats card
+
+Use this for a compact progress card.
+
+```yaml
+type: custom:wandr-stats-card
+```
+
+Equivalent advanced form:
+
+```yaml
+type: custom:wandr-card
+layout: stats
+```
+
+### Custom layout card
+
+Advanced users can still build a custom card from sections.
+
+```yaml
+type: custom:wandr-card
+layout: custom
+sections:
+  - hero_stats
+  - map
+  - daily_controls
+  - progress_compact
+```
+
+Available custom sections:
+
+```text
+hero_stats
+summary
+map
+daily_controls
+planner
+a_to_b
+generation_controls
+avoid
+progress_compact
+progress
+export
 ```
 
 The generated route files are available at:
@@ -204,7 +295,7 @@ Common sensors:
 ```text
 sensor.wandr_route_name
 sensor.wandr_distance
-sensor.wandr_duration
+sensor.wandr_estimated_duration
 sensor.wandr_elevation_gain
 sensor.wandr_generation_status
 sensor.wandr_last_generation_summary
@@ -219,12 +310,18 @@ sensor.wandr_geojson_url
 Common controls:
 
 ```text
+select.wandr_generation_type
+select.wandr_current_route_street
+select.wandr_blocked_street_section
 switch.wandr_loop_route
 switch.wandr_auto_pick_daily_route
 switch.wandr_allow_relaxed_fallback
 text.wandr_start_address
 text.wandr_end_address
 text.wandr_blacklist
+text.wandr_street_to_avoid
+text.wandr_avoid_from_cross_street
+text.wandr_avoid_to_cross_street
 number.wandr_target_miles
 number.wandr_pace
 number.wandr_base_route_count
@@ -237,6 +334,8 @@ button.wandr_previous_route
 button.wandr_random_route
 button.wandr_mark_completed
 button.wandr_skip_today
+button.wandr_avoid_selected_street_section
+button.wandr_remove_blocked_street_section
 ```
 
 Services:
@@ -252,6 +351,8 @@ wandr.mark_completed
 wandr.skip_today
 wandr.set_blacklist
 wandr.set_a_to_b_goal
+wandr.add_blocked_section
+wandr.remove_selected_blocked_section
 wandr.export_settings
 wandr.import_settings
 ```
