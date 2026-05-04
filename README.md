@@ -5,9 +5,6 @@
 
 **Current version:** `1.0.3-beta`
 
-[![Open your Home Assistant instance and open this repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=beeboee&repository=wandr&category=integration)
-</div>
-
 wandr is a Home Assistant custom integration for generating rotating walkable routes and exposing the route controls as normal Home Assistant entities, so you can build your own dashboard around it.
 
 It supports loop routes, A-to-B routes, configurable route goals, street/segment blocking, daily route assignment, completion tracking, route history, route style preferences, Google Maps links, GPX/GeoJSON export, and mobile-friendly dashboard examples.
@@ -72,6 +69,9 @@ api.opentopodata.org
 - Optional configurable Lovelace card for building a wandr dashboard
 
 ## Install with HACS
+
+[![Open your Home Assistant instance and open this repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=beeboee&repository=wandr&category=integration)
+</div>
 
 This is the recommended install method.
 
