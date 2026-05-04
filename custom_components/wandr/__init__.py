@@ -102,6 +102,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             coord.state["feedback_to_cross"] = call.data.get("to_cross")
         await coord.add_blocked_section()
 
+    async def remove_selected_blocked_section(call: ServiceCall):
+        await (await get_coord()).remove_selected_blocked_section()
+
     async def clear_history(call: ServiceCall):
         await (await get_coord()).clear_history()
 
@@ -123,6 +126,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.services.async_register(DOMAIN, "set_a_to_b_deviation", set_a_to_b_deviation)
     hass.services.async_register(DOMAIN, "set_a_to_b_goal", set_a_to_b_deviation)
     hass.services.async_register(DOMAIN, "add_blocked_section", add_blocked_section)
+    hass.services.async_register(DOMAIN, "remove_selected_blocked_section", remove_selected_blocked_section)
     hass.services.async_register(DOMAIN, "clear_history", clear_history)
     hass.services.async_register(DOMAIN, "export_settings", export_settings)
     hass.services.async_register(DOMAIN, "import_settings", import_settings)
