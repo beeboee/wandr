@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.3-beta
+
+- Fixed setup form validation for numeric fields that could show `expected float` in Home Assistant.
+- Added missing setup labels for route style and relaxed fallback.
+
 ## 1.0.2-beta
 
 - Renamed remaining user-facing project references to wandr.
