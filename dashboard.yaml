@@ -73,7 +73,7 @@ sections:
 
       - type: iframe
         title: Map
-        url: /local/wandr/current_route.html
+        url: /local/wandr/current_route.html?v=106
         aspect_ratio: 80%
 
   - type: grid
@@ -104,7 +104,7 @@ sections:
 
       - type: iframe
         title: Directions
-        url: /local/wandr/current_directions.html
+        url: /local/wandr/current_directions.html?v=106
         aspect_ratio: 70%
 
   - type: grid
@@ -165,8 +165,10 @@ sections:
         entities:
           - entity: sensor.wandr_generation_status
             name: Status
+          - entity: sensor.wandr_configured_route_count
+            name: Requested Base Routes
           - entity: sensor.wandr_generated_route_count
-            name: Routes
+            name: Generated Routes
           - entity: sensor.wandr_last_generation_summary
             name: Summary
           - entity: sensor.wandr_validation_warnings
