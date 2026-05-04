@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.7-beta
+
+- Added a custom `wandr-route-card` Lovelace card with route summary, route controls, and a Leaflet map that updates from Home Assistant state instead of relying on an iframe.
+- Added a custom `wandr-avoid-card` Lovelace card for a cleaner avoid-list workflow.
+- Reworked the example dashboard to use the new custom route and avoid cards.
+- Kept the existing entity-based controls and export files available for compatibility.
+
 ## 1.0.6-beta
 
 - Strengthened the mobile map iframe refresh behavior with no-cache headers, a cache-busted JSON fetch, faster polling, focus refresh, page-show refresh, and visibility-change refresh.
