@@ -83,11 +83,11 @@ class WandrConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Required(
                 "target_miles",
                 default=defaults.get("target_miles", DEFAULT_TARGET_MILES),
-            ): float,
+            ): vol.Coerce(float),
             vol.Required(
                 "walking_minutes_per_mile",
                 default=defaults.get("walking_minutes_per_mile", DEFAULT_WALKING_MINUTES_PER_MILE),
-            ): float,
+            ): vol.Coerce(float),
             vol.Required(
                 "ab_extra_mode",
                 default=_goal_mode_default(defaults.get("ab_extra_mode", DEFAULT_AB_EXTRA_MODE)),
@@ -95,15 +95,15 @@ class WandrConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Required(
                 "ab_extra_miles",
                 default=defaults.get("ab_extra_miles", DEFAULT_AB_EXTRA_MILES),
-            ): float,
+            ): vol.Coerce(float),
             vol.Required(
                 "ab_extra_percent",
                 default=defaults.get("ab_extra_percent", DEFAULT_AB_EXTRA_PERCENT),
-            ): float,
+            ): vol.Coerce(float),
             vol.Required(
                 "ab_extra_minutes",
                 default=defaults.get("ab_extra_minutes", DEFAULT_AB_EXTRA_MINUTES),
-            ): int,
+            ): vol.Coerce(int),
             vol.Required(
                 "ab_finish_time",
                 default=defaults.get("ab_finish_time", DEFAULT_AB_FINISH_TIME),
@@ -119,5 +119,5 @@ class WandrConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Required(
                 "route_count",
                 default=defaults.get("route_count", DEFAULT_ROUTE_COUNT),
-            ): int,
+            ): vol.Coerce(int),
         })
