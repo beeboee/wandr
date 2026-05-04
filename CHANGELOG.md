@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.6-beta
+
+- Strengthened the mobile map iframe refresh behavior with no-cache headers, a cache-busted JSON fetch, faster polling, focus refresh, page-show refresh, and visibility-change refresh.
+- Added `Ask every time` as the default map app option, using a `geo:` URL that can trigger Android's app chooser when Android has no pinned default map app.
+- Added a Configured Route Count sensor so the dashboard can show requested base routes separately from generated route instances.
+- Updated the dashboard map and directions iframe URLs with cache-busting query strings.
+
 ## 1.0.5-beta
 
 - Reworked the example dashboard into clearer sections: Today, Navigate, Generate, Avoid List, Progress, and Files & Backup.
