@@ -18,6 +18,10 @@ pick_daily_route:
   name: Pick today's route
   description: Assigns a route for today and resets today's completed/skipped state.
   fields: {}
+pick_today_route:
+  name: Pick today's route
+  description: Alias for pick_daily_route. Assigns a route for today and resets today's completed/skipped state.
+  fields: {}
 mark_completed:
   name: Mark completed
   description: Marks today's selected route as completed and writes a history entry.
