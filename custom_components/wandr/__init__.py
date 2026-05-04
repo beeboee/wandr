@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from homeassistant.config_entries import ConfigEntry
@@ -8,20 +9,32 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from .const import DOMAIN, PLATFORMS
 from .coordinator import WandrCoordinator
 
+_LOGGER = logging.getLogger(__name__)
 FRONTEND_DIR = Path(__file__).parent / "frontend"
 
 
-def _register_frontend_path(hass: HomeAssistant) -> None:
-    """Register the bundled Lovelace card path.
+async def _register_frontend_path(hass: HomeAssistant) -> None:
+    """Register the bundled Lovelace card path when supported by this HA version."""
+    static_config = None
 
-    Home Assistant has used different helpers for static paths across versions.
-    Keep this compatible so config flow loading does not fail on older installs.
-    """
-    hass.http.register_static_path(
-        f"/{DOMAIN}/frontend",
-        str(FRONTEND_DIR),
-        cache_headers=False,
-    )
+    try:
+        from homeassistant.components.http import StaticPathConfig
+
+        static_config = StaticPathConfig(
+            f"/{DOMAIN}/frontend",
+            str(FRONTEND_DIR),
+            False,
+        )
+    except Exception as err:
+        _LOGGER.debug("StaticPathConfig unavailable; frontend card path not registered: %s", err)
+        return
+
+    register_paths = getattr(hass.http, "async_register_static_paths", None)
+    if register_paths is None:
+        _LOGGER.debug("async_register_static_paths unavailable; frontend card path not registered")
+        return
+
+    await register_paths([static_config])
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -29,7 +42,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await coordinator.async_load()
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
 
-    _register_frontend_path(hass)
+    await _register_frontend_path(hass)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
