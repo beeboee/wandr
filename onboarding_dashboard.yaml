@@ -1,0 +1,89 @@
+title: Daily Walk Setup
+path: daily-walk-setup
+icon: mdi:map-plus
+type: sections
+max_columns: 2
+sections:
+  - type: grid
+    cards:
+      - type: heading
+        heading: 1. Route Basics
+        heading_style: title
+        icon: mdi:map-marker-path
+      - type: entities
+        title: Start Here
+        entities:
+          - entity: text.daily_walk_start_address
+            name: Start Address
+          - entity: switch.daily_walk_loop_route
+            name: Loop Route
+          - entity: text.daily_walk_end_address
+            name: End Address
+          - entity: number.daily_walk_target_miles
+            name: Desired Miles
+          - entity: number.daily_walk_pace
+            name: Walking Pace
+
+  - type: grid
+    cards:
+      - type: heading
+        heading: 2. Route Preferences
+        heading_style: title
+        icon: mdi:tune
+      - type: entities
+        title: How routes should feel
+        entities:
+          - entity: select.daily_walk_route_style
+            name: Route Style
+          - entity: select.daily_walk_a_to_b_goal_mode
+            name: A-to-B Goal Mode
+          - entity: switch.daily_walk_allow_relaxed_fallback
+            name: Relaxed Fallback
+          - entity: number.daily_walk_base_route_count
+            name: Base Route Count
+
+  - type: grid
+    cards:
+      - type: heading
+        heading: 3. Generate
+        heading_style: title
+        icon: mdi:refresh
+      - type: button
+        entity: button.daily_walk_generate_routes
+        name: Generate Routes
+        icon: mdi:refresh
+        tap_action:
+          action: press
+      - type: entities
+        title: Generator Status
+        entities:
+          - entity: sensor.daily_walk_generation_status
+          - entity: sensor.daily_walk_last_generation_summary
+          - entity: sensor.daily_walk_validation_warnings
+          - entity: sensor.daily_walk_last_error
+
+  - type: grid
+    cards:
+      - type: heading
+        heading: 4. Use Today's Walk
+        heading_style: title
+        icon: mdi:walk
+      - type: entities
+        title: Today's Route
+        entities:
+          - entity: sensor.daily_walk_route_name
+          - entity: sensor.daily_walk_distance
+          - entity: sensor.daily_walk_estimated_duration
+          - entity: sensor.daily_walk_route_quality_score
+      - type: horizontal-stack
+        cards:
+          - type: button
+            entity: button.daily_walk_pick_today_route
+            name: Pick Today
+            tap_action:
+              action: press
+          - type: button
+            entity: button.daily_walk_mark_completed
+            name: Complete
+            tap_action:
+              action: press

@@ -1,0 +1,6 @@
+{
+  "name": "Daily Walks",
+  "render_readme": true,
+  "domains": ["daily_walks"],
+  "homeassistant": "2024.12.0"
+}

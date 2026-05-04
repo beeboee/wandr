@@ -1,0 +1,248 @@
+title: Daily Walk
+path: daily-walk
+icon: mdi:walk
+type: sections
+max_columns: 2
+sections:
+  - type: grid
+    cards:
+      - type: heading
+        heading: Today's Walk
+        heading_style: title
+        icon: mdi:walk
+
+      - type: entities
+        title: Today
+        show_header_toggle: false
+        entities:
+          - entity: sensor.daily_walk_route_name
+            name: Route
+          - entity: sensor.daily_walk_day_number
+            name: Day
+          - entity: sensor.daily_walk_today_status
+            name: Status
+          - entity: binary_sensor.daily_walk_completed_today
+            name: Completed Today
+          - entity: sensor.daily_walk_distance
+            name: Distance
+          - entity: sensor.daily_walk_estimated_duration
+            name: Estimated Duration
+          - entity: sensor.daily_walk_elevation_gain
+            name: Elevation Gain
+          - entity: sensor.daily_walk_route_style
+            name: Route Style
+          - entity: sensor.daily_walk_route_quality_score
+            name: Quality Score
+
+      - type: iframe
+        title: Route Map
+        url: /local/daily_walks/current_route.html
+        aspect_ratio: 75%
+
+      - type: iframe
+        title: Directions
+        url: /local/daily_walks/current_directions.html
+        aspect_ratio: 75%
+
+      - type: horizontal-stack
+        cards:
+          - type: button
+            entity: button.daily_walk_mark_completed
+            name: Complete
+            icon: mdi:check-circle
+            tap_action:
+              action: press
+          - type: button
+            entity: button.daily_walk_skip_today
+            name: Skip
+            icon: mdi:skip-next-circle
+            tap_action:
+              action: press
+
+      - type: horizontal-stack
+        cards:
+          - type: button
+            entity: button.daily_walk_previous_route
+            name: Previous
+            icon: mdi:chevron-left
+            tap_action:
+              action: press
+          - type: button
+            entity: button.daily_walk_pick_today_route
+            name: Pick Today
+            icon: mdi:calendar-today
+            tap_action:
+              action: press
+          - type: button
+            entity: button.daily_walk_next_route
+            name: Next
+            icon: mdi:chevron-right
+            tap_action:
+              action: press
+
+      - type: custom:button-card
+        name: Open in Google Maps
+        icon: mdi:google-maps
+        tap_action:
+          action: url
+          url_path: |
+            [[[ return states['sensor.daily_walk_google_maps_url'].state; ]]]
+
+  - type: grid
+    cards:
+      - type: heading
+        heading: Progress
+        heading_style: title
+        icon: mdi:chart-line
+
+      - type: entities
+        title: Walking Stats
+        entities:
+          - entity: sensor.daily_walk_current_streak
+            name: Current Streak
+          - entity: sensor.daily_walk_this_week_walks
+            name: Walks This Week
+          - entity: sensor.daily_walk_this_week_miles
+            name: Miles This Week
+          - entity: sensor.daily_walk_this_month_walks
+            name: Walks This Month
+          - entity: sensor.daily_walk_this_month_miles
+            name: Miles This Month
+          - entity: sensor.daily_walk_history_entries
+            name: History Entries
+
+      - type: entities
+        title: Daily Automation
+        entities:
+          - entity: switch.daily_walk_auto_pick_daily_route
+            name: Auto Pick Daily Route
+          - entity: time.daily_walk_daily_pick_time
+            name: Daily Pick Time
+
+  - type: grid
+    cards:
+      - type: heading
+        heading: Route Controls
+        heading_style: title
+        icon: mdi:tune
+
+      - type: entities
+        title: Basics
+        entities:
+          - entity: text.daily_walk_start_address
+            name: Start Address
+          - entity: switch.daily_walk_loop_route
+            name: Loop Route
+          - entity: text.daily_walk_end_address
+            name: End Address
+          - entity: number.daily_walk_target_miles
+            name: Desired Miles
+          - entity: number.daily_walk_pace
+            name: Pace
+          - entity: select.daily_walk_route_style
+            name: Route Style
+          - entity: switch.daily_walk_allow_relaxed_fallback
+            name: Relaxed Fallback
+
+      - type: entities
+        title: A-to-B Goal
+        entities:
+          - entity: select.daily_walk_a_to_b_goal_mode
+            name: Goal Mode
+          - entity: number.daily_walk_a_to_b_extra_miles
+            name: Extra Miles
+          - entity: number.daily_walk_a_to_b_extra_percent
+            name: Extra Percent
+          - entity: number.daily_walk_a_to_b_extra_minutes
+            name: Extra Minutes
+          - entity: time.daily_walk_a_to_b_finish_by_time
+            name: Finish By
+          - entity: sensor.daily_walk_a_to_b_goal_plan
+            name: Current Goal
+
+      - type: button
+        entity: button.daily_walk_generate_routes
+        name: Generate Routes
+        icon: mdi:refresh
+        tap_action:
+          action: press
+
+      - type: entities
+        title: Generator Status
+        entities:
+          - entity: sensor.daily_walk_generation_status
+          - entity: sensor.daily_walk_last_generation_summary
+          - entity: sensor.daily_walk_validation_warnings
+          - entity: sensor.daily_walk_last_error
+
+  - type: grid
+    cards:
+      - type: heading
+        heading: Street Feedback / Avoid List
+        heading_style: title
+        icon: mdi:road-variant
+
+      - type: markdown
+        content: >
+          Pick a street from the current route, or type one manually. Cross streets are optional.
+          Leaving cross streets blank avoids the whole named street. Cross-street section blocking is best-effort and depends on OpenStreetMap intersection data.
+
+      - type: entities
+        title: Avoid a Street or Section
+        entities:
+          - entity: select.daily_walk_current_route_street
+            name: Street From Current Route
+          - entity: text.daily_walk_street_to_avoid
+            name: Street To Avoid
+          - entity: text.daily_walk_avoid_from_cross_street
+            name: From Cross Street
+          - entity: text.daily_walk_avoid_to_cross_street
+            name: To Cross Street
+
+      - type: horizontal-stack
+        cards:
+          - type: button
+            entity: button.daily_walk_avoid_selected_street_section
+            name: Never Use This Section
+            icon: mdi:map-marker-remove
+            tap_action:
+              action: press
+          - type: button
+            entity: button.daily_walk_remove_blocked_street_section
+            name: Remove Block
+            icon: mdi:delete
+            tap_action:
+              action: press
+
+      - type: entities
+        title: Existing Blocks
+        entities:
+          - entity: select.daily_walk_blocked_street_section
+            name: Blocked Section
+          - entity: sensor.daily_walk_blocked_street_sections
+            name: Block Count
+
+  - type: grid
+    cards:
+      - type: heading
+        heading: Export / Backup
+        heading_style: title
+        icon: mdi:file-export
+      - type: entities
+        title: Export URLs
+        entities:
+          - entity: sensor.daily_walk_directions_url
+          - entity: sensor.daily_walk_gpx_url
+          - entity: sensor.daily_walk_geojson_url
+      - type: horizontal-stack
+        cards:
+          - type: button
+            entity: button.daily_walk_export_settings
+            name: Export Settings
+            tap_action:
+              action: press
+          - type: button
+            entity: button.daily_walk_import_settings
+            name: Import Settings
+            tap_action:
+              action: press
