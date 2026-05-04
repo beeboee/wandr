@@ -1,4 +1,10 @@
+<div align="center">
+  <img src="assets/wandr-logo.svg" alt="wandr logo" width="420" />
+
 # wandr for Home Assistant
+
+[![Open your Home Assistant instance and open this repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=beeboee&repository=wandr&category=integration)
+</div>
 
 wandr is a Home Assistant custom integration for generating rotating walkable routes and exposing the route controls as normal Home Assistant entities, so you can build your own dashboard around it.
 
