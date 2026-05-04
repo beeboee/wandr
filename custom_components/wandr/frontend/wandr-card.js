@@ -54,16 +54,13 @@ class WandrCard extends HTMLElement {
     return this._hass?.states?.[entityId]?.attributes?.[attrName];
   }
 
-  friendly(entityId) {
-    return this.attr(entityId, "friendly_name") || entityId;
-  }
-
   callService(domain, service) {
-    if (!this._hass) return;
+    if (!this._hass || !service) return;
     this._hass.callService(domain, service);
   }
 
   moreInfo(entityId) {
+    if (!entityId) return;
     this.fire("hass-more-info", { entityId });
   }
 
@@ -75,7 +72,7 @@ class WandrCard extends HTMLElement {
 
   actionButton(label, icon, service, extraClass = "") {
     return `
-      <button class="wandr-button ${extraClass}" @service="${service}" type="button">
+      <button class="wandr-button ${extraClass}" data-service="${service}" type="button">
         <ha-icon icon="${icon}"></ha-icon>
         <span>${label}</span>
       </button>
@@ -84,7 +81,7 @@ class WandrCard extends HTMLElement {
 
   entityTile(entityId, label, icon) {
     return `
-      <button class="wandr-tile" @entity="${entityId}" type="button">
+      <button class="wandr-tile" data-entity="${entityId}" type="button">
         <ha-icon icon="${icon}"></ha-icon>
         <span class="wandr-tile-label">${label}</span>
         <span class="wandr-tile-state">${this.state(entityId)}</span>
@@ -94,7 +91,7 @@ class WandrCard extends HTMLElement {
 
   entityRow(entityId, label, icon) {
     return `
-      <button class="wandr-row" @entity="${entityId}" type="button">
+      <button class="wandr-row" data-entity="${entityId}" type="button">
         <ha-icon icon="${icon}"></ha-icon>
         <span class="wandr-row-label">${label}</span>
         <span class="wandr-row-state">${this.state(entityId)}</span>
@@ -144,7 +141,7 @@ class WandrCard extends HTMLElement {
           ${this.actionButton("Generate", "mdi:refresh", "generate_year")}
           ${this.actionButton("Done", "mdi:check-circle", "mark_completed", "wandr-primary")}
           ${this.actionButton("Skip", "mdi:skip-next-circle", "skip_today", "wandr-warning")}
-          <button class="wandr-button" @url="sensor.wandr_google_maps_url" type="button">
+          <button class="wandr-button" data-url="sensor.wandr_google_maps_url" type="button">
             <ha-icon icon="mdi:google-maps"></ha-icon>
             <span>Maps</span>
           </button>
@@ -275,6 +272,7 @@ class WandrCard extends HTMLElement {
     if (!this.config) return;
 
     const columns = Number(this.config.columns || 2);
+    const safeColumns = Math.max(1, Math.min(columns, 4));
     const sectionHtml = this.config.sections.map((section) => this.renderSection(section)).join("");
 
     this.innerHTML = `
@@ -291,7 +289,7 @@ class WandrCard extends HTMLElement {
 
           .wandr-inner {
             display: grid;
-            grid-template-columns: repeat(${Math.max(1, Math.min(columns, 4))}, minmax(0, 1fr));
+            grid-template-columns: repeat(${safeColumns}, minmax(0, 1fr));
             gap: 12px;
             padding: 16px;
           }
@@ -469,16 +467,16 @@ class WandrCard extends HTMLElement {
       </ha-card>
     `;
 
-    this.querySelectorAll("[\\@service]").forEach((button) => {
-      button.addEventListener("click", () => this.callService("wandr", button.getAttribute("@service")));
+    this.querySelectorAll("[data-service]").forEach((button) => {
+      button.addEventListener("click", () => this.callService("wandr", button.dataset.service));
     });
 
-    this.querySelectorAll("[\\@entity]").forEach((button) => {
-      button.addEventListener("click", () => this.moreInfo(button.getAttribute("@entity")));
+    this.querySelectorAll("[data-entity]").forEach((button) => {
+      button.addEventListener("click", () => this.moreInfo(button.dataset.entity));
     });
 
-    this.querySelectorAll("[\\@url]").forEach((button) => {
-      button.addEventListener("click", () => this.openUrl(button.getAttribute("@url")));
+    this.querySelectorAll("[data-url]").forEach((button) => {
+      button.addEventListener("click", () => this.openUrl(button.dataset.url));
     });
   }
 }
