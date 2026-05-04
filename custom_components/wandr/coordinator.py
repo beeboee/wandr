@@ -421,10 +421,21 @@ class WandrCoordinator(DataUpdateCoordinator):
                     self.state["finish_by_available_minutes"] = None
                     self.state["finish_by_target_distance_miles"] = None
 
+            seed_source = build_seed_source(
+                start_address,
+                end_address,
+                "loop" if loop_route else "a-to-b",
+                route_style,
+                requested_count,
+                round(target_m, 2),
+                walking_minutes_per_mile,
+            )
+
             self.state["network_node_count"] = len(coords)
             routes = await self.hass.async_add_executor_job(
                 self._generate_routes_sync, graph, coords, start_node, end_node,
-                target_m, requested_count, loop_route, walking_minutes_per_mile, route_style, allow_relaxed_fallback, warnings,
+                target_m, requested_count, loop_route, walking_minutes_per_mile,
+                route_style, allow_relaxed_fallback, warnings, seed_source,
             )
             routes = await self._add_elevation(routes)
             self.state["routes"] = routes
@@ -523,7 +534,7 @@ class WandrCoordinator(DataUpdateCoordinator):
         end_node = min(nodes, key=lambda n: haversine(end_lat, end_lon, nodes[n][0], nodes[n][1]))
         return graph, nodes, start_node, end_node
 
-    def _generate_routes_sync(self, graph, coords, start_node, end_node, target_m, requested_count, loop_route, walking_minutes_per_mile, route_style=DEFAULT_ROUTE_STYLE, allow_relaxed_fallback=True, warnings=None):
+    def _generate_routes_sync(self, graph, coords, start_node, end_node, target_m, requested_count, loop_route, walking_minutes_per_mile, route_style=DEFAULT_ROUTE_STYLE, allow_relaxed_fallback=True, warnings=None, seed_source=None):
         warnings = warnings if warnings is not None else []
         tolerance = 0.10 if allow_relaxed_fallback is not False else 0.20
         min_m = target_m * (1 - tolerance)
@@ -548,7 +559,7 @@ class WandrCoordinator(DataUpdateCoordinator):
         accepted = []
         accepted_edges = []
         attempts = 0
-        random.seed(7050)
+        random.seed(seed_source or "wandr-route-generation")
         while len(accepted) < desired_base_count and attempts < 70000:
             attempts += 1
             waypoint_count = random.choice(waypoint_choices)
@@ -587,7 +598,7 @@ class WandrCoordinator(DataUpdateCoordinator):
 
         if not accepted and allow_relaxed_fallback:
             warnings.append("Strict route generation failed; relaxed distance tolerance to ±20% and retried.")
-            return self._generate_routes_sync(graph, coords, start_node, end_node, target_m, requested_count, loop_route, walking_minutes_per_mile, route_style, False, warnings)
+            return self._generate_routes_sync(graph, coords, start_node, end_node, target_m, requested_count, loop_route, walking_minutes_per_mile, route_style, False, warnings, seed_source)
         if not accepted:
             raise RuntimeError("No routes generated. Try clearing avoid items, increasing desired miles, choosing closer endpoints, or enabling relaxed fallback.")
         accepted.sort(key=lambda r: r.get("quality_score", 0), reverse=True)
@@ -808,6 +819,15 @@ def normalize_route_style(value: Any) -> str:
     return DEFAULT_ROUTE_STYLE
 
 
+def build_seed_source(*parts: Any) -> str:
+    values = [
+        str(part).strip().lower()
+        for part in parts
+        if part not in (None, "")
+    ]
+    return "|".join(values) or "wandr-route-generation"
+
+
 def edge_between(graph, a, b):
     matches = [e for e in graph.get(a, []) if e.to == b]
     if not matches:
@@ -898,7 +918,7 @@ def render_map_html(route):
     end_marker = ""
     if coords and coords[0] != coords[-1]:
         end_marker = "L.marker(coords[coords.length - 1]).addTo(map).bindPopup('End');"
-    fallback = coords[0] if coords else [45.57493, -122.67965]
+    fallback = coords[0] if coords else [39.8283, -98.5795]
     fallback_json = json.dumps(fallback)
     return f'''<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
