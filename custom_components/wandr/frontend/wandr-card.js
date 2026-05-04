@@ -1,22 +1,19 @@
 class WandrCard extends HTMLElement {
   static getStubConfig() {
     return {
-      sections: ["summary", "remote", "map", "progress"],
+      sections: ["summary", "stats", "remote", "map", "progress"],
       columns: 1,
+      show_header: false,
     };
   }
 
   setConfig(config) {
-    if (!config) {
-      throw new Error("Invalid card configuration");
-    }
+    if (!config) throw new Error("Invalid card configuration");
 
     this.config = {
-      title: "wandr",
-      sections: ["summary", "remote", "map", "progress"],
+      sections: ["summary", "stats", "remote", "map", "progress"],
       columns: 1,
-      show_header: true,
-      show_map: true,
+      show_header: false,
       ...config,
     };
 
@@ -30,9 +27,7 @@ class WandrCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
-    if (!this._rendered) {
-      this._renderStatic();
-    }
+    if (!this._rendered) this._renderStatic();
     this._updateDynamicValues();
   }
 
@@ -43,10 +38,13 @@ class WandrCard extends HTMLElement {
 
   _state(entityId) {
     const value = this._hass?.states?.[entityId]?.state;
-    if (value === undefined || value === null || value === "unknown" || value === "unavailable") {
-      return "—";
-    }
+    if (value === undefined || value === null || value === "unknown" || value === "unavailable") return "—";
     return value;
+  }
+
+  _number(entityId) {
+    const value = Number(this._state(entityId));
+    return Number.isFinite(value) ? value : 0;
   }
 
   _callService(service) {
@@ -56,26 +54,23 @@ class WandrCard extends HTMLElement {
 
   _moreInfo(entityId) {
     if (!entityId) return;
-    const event = new Event("hass-more-info", {
-      bubbles: true,
-      cancelable: false,
-      composed: true,
-    });
+    const event = new Event("hass-more-info", { bubbles: true, cancelable: false, composed: true });
     event.detail = { entityId };
     this.dispatchEvent(event);
   }
 
-  _openUrl(entityId) {
+  _openUrl(entityId, fallbackUrl = "") {
     const url = this._state(entityId);
-    if (!url || url === "—") return;
-    window.open(url, "_blank", "noopener,noreferrer");
+    const target = url && url !== "—" && /^https?:\/\//.test(url) ? url : fallbackUrl;
+    if (!target) return;
+    window.open(target, "_blank", "noopener,noreferrer");
   }
 
   _formatSummary() {
     const distance = this._state("sensor.wandr_distance");
     const duration = this._state("sensor.wandr_estimated_duration");
     const gain = this._state("sensor.wandr_elevation_gain");
-    return `${distance} · ${duration} · ${gain} gain`;
+    return `${distance} mi · ${duration} min · ${gain} ft gain`;
   }
 
   _button(label, icon, service, extraClass = "") {
@@ -87,12 +82,52 @@ class WandrCard extends HTMLElement {
     `;
   }
 
-  _tile(entityId, label, icon) {
+  _simpleTile(entityId, label, icon) {
     return `
       <button class="wandr-tile" data-entity="${entityId}" type="button">
         <ha-icon icon="${icon}"></ha-icon>
         <span class="wandr-label">${label}</span>
         <span class="wandr-value" data-state="${entityId}">—</span>
+      </button>
+    `;
+  }
+
+  _distanceTile() {
+    return `
+      <button class="wandr-tile wandr-tile-large" data-entity="sensor.wandr_distance" type="button">
+        <ha-icon icon="mdi:map-marker-distance"></ha-icon>
+        <span class="wandr-label">Distance</span>
+        <span class="wandr-value"><span data-state="sensor.wandr_distance">—</span> mi</span>
+      </button>
+    `;
+  }
+
+  _durationTile() {
+    return `
+      <button class="wandr-tile wandr-tile-large" data-entity="sensor.wandr_estimated_duration" type="button">
+        <ha-icon icon="mdi:clock-outline"></ha-icon>
+        <span class="wandr-label">Duration</span>
+        <span class="wandr-value"><span data-state="sensor.wandr_estimated_duration">—</span> min</span>
+      </button>
+    `;
+  }
+
+  _elevationTile() {
+    return `
+      <button class="wandr-tile wandr-visual-tile" data-entity="sensor.wandr_elevation_gain" type="button">
+        <div class="wandr-slope" data-visual="elevation"><span></span></div>
+        <span class="wandr-label">Elevation</span>
+        <span class="wandr-value"><span data-state="sensor.wandr_elevation_gain">—</span> ft</span>
+      </button>
+    `;
+  }
+
+  _qualityTile() {
+    return `
+      <button class="wandr-tile wandr-visual-tile" data-entity="sensor.wandr_route_quality_score" type="button">
+        <div class="wandr-ring" data-visual="quality"><span data-state="sensor.wandr_route_quality_score">—</span></div>
+        <span class="wandr-label">Quality</span>
+        <span class="wandr-value">route fit</span>
       </button>
     `;
   }
@@ -112,7 +147,6 @@ class WandrCard extends HTMLElement {
       <section class="wandr-section wandr-summary">
         <div class="wandr-summary-icon"><ha-icon icon="mdi:walk"></ha-icon></div>
         <div class="wandr-summary-copy">
-          <div class="wandr-kicker">Today's Route</div>
           <div class="wandr-route-name" data-state="sensor.wandr_route_name">—</div>
           <div class="wandr-muted" data-summary="route">—</div>
         </div>
@@ -123,12 +157,11 @@ class WandrCard extends HTMLElement {
   _sectionStats() {
     return `
       <section class="wandr-section">
-        <div class="wandr-section-title">Route Stats</div>
         <div class="wandr-grid wandr-grid-4">
-          ${this._tile("sensor.wandr_distance", "Distance", "mdi:map-marker-distance")}
-          ${this._tile("sensor.wandr_estimated_duration", "Duration", "mdi:clock-outline")}
-          ${this._tile("sensor.wandr_elevation_gain", "Elevation", "mdi:elevation-rise")}
-          ${this._tile("sensor.wandr_route_quality_score", "Quality", "mdi:star-outline")}
+          ${this._distanceTile()}
+          ${this._durationTile()}
+          ${this._elevationTile()}
+          ${this._qualityTile()}
         </div>
       </section>
     `;
@@ -137,7 +170,6 @@ class WandrCard extends HTMLElement {
   _sectionRemote() {
     return `
       <section class="wandr-section">
-        <div class="wandr-section-title">Route Remote</div>
         <div class="wandr-grid wandr-grid-4 wandr-remote-grid">
           ${this._button("Prev", "mdi:chevron-left", "previous_route")}
           ${this._button("Today", "mdi:calendar-star", "pick_daily_route", "wandr-primary")}
@@ -146,7 +178,7 @@ class WandrCard extends HTMLElement {
           ${this._button("Generate", "mdi:refresh", "generate_year")}
           ${this._button("Done", "mdi:check-circle", "mark_completed", "wandr-primary")}
           ${this._button("Skip", "mdi:skip-next-circle", "skip_today", "wandr-warning")}
-          <button class="wandr-button" data-url="sensor.wandr_google_maps_url" type="button">
+          <button class="wandr-button" data-url="sensor.wandr_google_maps_url" data-fallback-url="/local/wandr/current_route.html" type="button">
             <ha-icon icon="mdi:google-maps"></ha-icon>
             <span>Maps</span>
           </button>
@@ -158,7 +190,6 @@ class WandrCard extends HTMLElement {
   _sectionMap() {
     return `
       <section class="wandr-section wandr-map-section">
-        <div class="wandr-section-title">Map</div>
         <iframe class="wandr-frame" src="/local/wandr/current_route.html"></iframe>
       </section>
     `;
@@ -167,7 +198,6 @@ class WandrCard extends HTMLElement {
   _sectionDirections() {
     return `
       <section class="wandr-section wandr-map-section">
-        <div class="wandr-section-title">Directions</div>
         <iframe class="wandr-frame wandr-directions-frame" src="/local/wandr/current_directions.html"></iframe>
       </section>
     `;
@@ -176,12 +206,11 @@ class WandrCard extends HTMLElement {
   _sectionProgress() {
     return `
       <section class="wandr-section">
-        <div class="wandr-section-title">Progress</div>
         <div class="wandr-grid wandr-grid-4">
-          ${this._tile("sensor.wandr_current_streak", "Streak", "mdi:fire")}
-          ${this._tile("sensor.wandr_this_week_walks", "Week", "mdi:calendar-week")}
-          ${this._tile("sensor.wandr_this_week_miles", "Week Miles", "mdi:map-marker-distance")}
-          ${this._tile("sensor.wandr_this_month_miles", "Month Miles", "mdi:map")}
+          ${this._simpleTile("sensor.wandr_current_streak", "Streak", "mdi:fire")}
+          ${this._simpleTile("sensor.wandr_this_week_walks", "Week", "mdi:calendar-week")}
+          ${this._simpleTile("sensor.wandr_this_week_miles", "Week Miles", "mdi:map-marker-distance")}
+          ${this._simpleTile("sensor.wandr_this_month_miles", "Month Miles", "mdi:map")}
         </div>
       </section>
     `;
@@ -190,7 +219,6 @@ class WandrCard extends HTMLElement {
   _sectionSetup() {
     return `
       <section class="wandr-section">
-        <div class="wandr-section-title">Route Setup</div>
         <div class="wandr-list">
           ${this._row("text.wandr_start_address", "Start Address", "mdi:map-marker")}
           ${this._row("switch.wandr_loop_route", "Loop Route", "mdi:map-marker-path")}
@@ -207,7 +235,6 @@ class WandrCard extends HTMLElement {
   _sectionAToB() {
     return `
       <section class="wandr-section">
-        <div class="wandr-section-title">A-to-B Goal</div>
         <div class="wandr-list">
           ${this._row("select.wandr_a_to_b_goal_mode", "Goal Mode", "mdi:target")}
           ${this._row("number.wandr_a_to_b_extra_miles", "Extra Miles", "mdi:map-plus")}
@@ -223,7 +250,6 @@ class WandrCard extends HTMLElement {
   _sectionAvoid() {
     return `
       <section class="wandr-section">
-        <div class="wandr-section-title">Avoid Streets</div>
         <div class="wandr-list">
           ${this._row("select.wandr_current_route_street", "Route Street", "mdi:road-variant")}
           ${this._row("text.wandr_street_to_avoid", "Street To Avoid", "mdi:map-marker-remove")}
@@ -243,7 +269,6 @@ class WandrCard extends HTMLElement {
   _sectionExport() {
     return `
       <section class="wandr-section">
-        <div class="wandr-section-title">Export / Backup</div>
         <div class="wandr-grid wandr-grid-2">
           ${this._button("Export", "mdi:file-export", "export_settings")}
           ${this._button("Import", "mdi:file-import", "import_settings")}
@@ -275,7 +300,6 @@ class WandrCard extends HTMLElement {
 
   _renderStatic() {
     if (!this.config) return;
-
     const columns = Number(this.config.columns || 1);
     const safeColumns = Math.max(1, Math.min(columns, 3));
     const sectionHtml = this.config.sections.map((section) => this._renderSection(section)).join("");
@@ -290,42 +314,31 @@ class WandrCard extends HTMLElement {
             overflow: hidden;
           }
 
-          .wandr-header {
-            padding: 18px 18px 0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 20px;
-            font-weight: 850;
-          }
+          .wandr-header { display: none; }
 
           .wandr-header ha-icon,
           .wandr-summary-icon ha-icon,
           .wandr-button ha-icon,
           .wandr-tile ha-icon,
-          .wandr-row ha-icon {
-            color: var(--wandr-accent);
-          }
+          .wandr-row ha-icon { color: var(--wandr-accent); }
 
           .wandr-inner {
             display: grid;
             grid-template-columns: repeat(${safeColumns}, minmax(0, 1fr));
-            gap: 14px;
-            padding: 18px;
+            gap: 12px;
+            padding: 14px;
           }
 
           .wandr-section {
             border: 1px solid var(--wandr-border);
             border-radius: var(--wandr-radius);
-            padding: 14px;
+            padding: 12px;
             background: var(--card-background-color);
             min-width: 0;
           }
 
           .wandr-summary,
-          .wandr-map-section {
-            grid-column: 1 / -1;
-          }
+          .wandr-map-section { grid-column: 1 / -1; }
 
           .wandr-summary {
             display: grid;
@@ -343,41 +356,18 @@ class WandrCard extends HTMLElement {
             background: color-mix(in srgb, var(--wandr-accent) 14%, transparent);
           }
 
-          .wandr-summary-icon ha-icon {
-            width: 26px;
-            height: 26px;
-          }
-
-          .wandr-section-title {
-            font-weight: 850;
-            margin-bottom: 12px;
-          }
-
-          .wandr-kicker,
+          .wandr-summary-icon ha-icon { width: 26px; height: 26px; }
           .wandr-muted,
-          .wandr-label {
-            color: var(--secondary-text-color);
-          }
-
-          .wandr-kicker {
-            font-size: 12px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-          }
+          .wandr-label { color: var(--secondary-text-color); }
 
           .wandr-route-name {
             font-size: 24px;
             font-weight: 900;
             line-height: 1.1;
-            margin: 2px 0 4px;
+            margin: 0 0 4px;
           }
 
-          .wandr-grid {
-            display: grid;
-            gap: 10px;
-          }
-
+          .wandr-grid { display: grid; gap: 10px; }
           .wandr-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
           .wandr-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 
@@ -394,12 +384,12 @@ class WandrCard extends HTMLElement {
           }
 
           .wandr-button {
-            min-height: 64px;
+            min-height: 60px;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 6px;
+            gap: 5px;
             font-weight: 750;
           }
 
@@ -408,16 +398,14 @@ class WandrCard extends HTMLElement {
             border-color: color-mix(in srgb, var(--wandr-accent) 35%, var(--divider-color));
           }
 
-          .wandr-warning ha-icon {
-            color: var(--warning-color);
-          }
+          .wandr-warning ha-icon { color: var(--warning-color); }
 
           .wandr-tile {
             min-height: 74px;
             padding: 10px;
             display: grid;
             grid-template-areas: 'icon label' 'icon value';
-            grid-template-columns: 28px minmax(0, 1fr);
+            grid-template-columns: 30px minmax(0, 1fr);
             align-items: center;
             column-gap: 8px;
             text-align: left;
@@ -426,14 +414,58 @@ class WandrCard extends HTMLElement {
           .wandr-tile ha-icon { grid-area: icon; }
           .wandr-tile .wandr-label { grid-area: label; font-size: 12px; }
           .wandr-tile .wandr-value { grid-area: value; font-weight: 850; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .wandr-tile-large .wandr-value { font-size: 18px; }
 
-          .wandr-list {
-            display: grid;
-            gap: 8px;
+          .wandr-visual-tile {
+            grid-template-areas: 'visual label' 'visual value';
+            grid-template-columns: 44px minmax(0, 1fr);
           }
 
+          .wandr-slope {
+            grid-area: visual;
+            width: 38px;
+            height: 38px;
+            border-radius: 999px;
+            background: color-mix(in srgb, var(--wandr-accent) var(--elevation-intensity, 18%), transparent);
+            display: grid;
+            place-items: center;
+            overflow: hidden;
+          }
+
+          .wandr-slope span {
+            display: block;
+            width: 28px;
+            height: 4px;
+            border-radius: 999px;
+            background: var(--wandr-accent);
+            transform: rotate(var(--elevation-angle, 0deg));
+          }
+
+          .wandr-ring {
+            grid-area: visual;
+            width: 40px;
+            height: 40px;
+            border-radius: 999px;
+            display: grid;
+            place-items: center;
+            font-size: 11px;
+            font-weight: 850;
+            background: conic-gradient(var(--wandr-accent) var(--quality-percent, 0%), color-mix(in srgb, var(--disabled-text-color) 35%, transparent) 0);
+          }
+
+          .wandr-ring span {
+            width: 30px;
+            height: 30px;
+            border-radius: 999px;
+            display: grid;
+            place-items: center;
+            background: var(--card-background-color);
+          }
+
+          .wandr-list { display: grid; gap: 8px; }
+
           .wandr-row {
-            min-height: 46px;
+            min-height: 44px;
             padding: 8px 10px;
             display: grid;
             grid-template-columns: 28px minmax(0, 1fr) auto;
@@ -450,9 +482,7 @@ class WandrCard extends HTMLElement {
             font-weight: 700;
           }
 
-          .wandr-actions-row {
-            margin-top: 10px;
-          }
+          .wandr-actions-row { margin-top: 10px; }
 
           .wandr-frame {
             width: 100%;
@@ -463,41 +493,22 @@ class WandrCard extends HTMLElement {
             display: block;
           }
 
-          .wandr-directions-frame {
-            height: var(--wandr-directions-frame-height, 300px);
-          }
+          .wandr-directions-frame { height: var(--wandr-directions-frame-height, 300px); }
 
           @media (max-width: 900px) {
-            .wandr-inner {
-              grid-template-columns: 1fr;
-            }
+            .wandr-inner { grid-template-columns: 1fr; }
           }
 
           @media (max-width: 600px) {
-            .wandr-inner,
-            .wandr-header {
-              padding-left: 14px;
-              padding-right: 14px;
-            }
-
+            .wandr-inner { padding: 12px; }
             .wandr-grid-4,
-            .wandr-remote-grid {
-              grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
-
-            .wandr-frame {
-              height: var(--wandr-frame-height, 320px);
-            }
-
-            .wandr-row .wandr-value {
-              max-width: 120px;
-            }
+            .wandr-remote-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .wandr-frame { height: var(--wandr-frame-height, 320px); }
+            .wandr-row .wandr-value { max-width: 120px; }
           }
         </style>
         ${this.config.show_header ? `<div class="wandr-header"><ha-icon icon="mdi:map-marker-path"></ha-icon><span>${this.config.title}</span></div>` : ""}
-        <div class="wandr-inner">
-          ${sectionHtml}
-        </div>
+        <div class="wandr-inner">${sectionHtml}</div>
       </ha-card>
     `;
 
@@ -510,7 +521,7 @@ class WandrCard extends HTMLElement {
     });
 
     this.querySelectorAll("[data-url]").forEach((button) => {
-      button.addEventListener("click", () => this._openUrl(button.dataset.url));
+      button.addEventListener("click", () => this._openUrl(button.dataset.url, button.dataset.fallbackUrl));
     });
 
     this._rendered = true;
@@ -520,13 +531,27 @@ class WandrCard extends HTMLElement {
     if (!this._hass || !this._rendered) return;
 
     this.querySelectorAll("[data-state]").forEach((node) => {
-      const entityId = node.dataset.state;
-      node.textContent = this._state(entityId);
+      node.textContent = this._state(node.dataset.state);
     });
 
     const summary = this.querySelector("[data-summary='route']");
-    if (summary) {
-      summary.textContent = this._formatSummary();
+    if (summary) summary.textContent = this._formatSummary();
+
+    const elevation = this._number("sensor.wandr_elevation_gain");
+    const elevationVisual = this.querySelector("[data-visual='elevation']");
+    if (elevationVisual) {
+      const capped = Math.max(0, Math.min(elevation, 600));
+      const angle = Math.round((capped / 600) * 38);
+      const intensity = Math.round(14 + (capped / 600) * 28);
+      elevationVisual.style.setProperty("--elevation-angle", `${angle}deg`);
+      elevationVisual.style.setProperty("--elevation-intensity", `${intensity}%`);
+    }
+
+    const quality = this._number("sensor.wandr_route_quality_score");
+    const qualityVisual = this.querySelector("[data-visual='quality']");
+    if (qualityVisual) {
+      const percent = Math.max(0, Math.min(100, quality));
+      qualityVisual.style.setProperty("--quality-percent", `${percent}%`);
     }
   }
 }
