@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.4-beta
+
+- Added a live-updating map renderer so the route preview can update after Next, Previous, or Random without relying on the dashboard iframe to reload.
+- Switched the route preview tile layer away from OpenStreetMap's default tile server to avoid the `403r Access blocked` tile issue in Home Assistant.
+- Added a simple local integration icon.
+
 ## 1.0.3-beta
 
 - Fixed setup form validation for numeric fields that could show `expected float` in Home Assistant.
