@@ -1,0 +1,54 @@
+# wandr custom card examples
+#
+# First add this Lovelace resource:
+#   URL: /wandr/frontend/wandr-card.js
+#   Resource type: JavaScript Module
+
+# Full card
+- type: custom:wandr-card
+  title: wandr
+  columns: 2
+  sections:
+    - summary
+    - stats
+    - remote
+    - map
+    - directions
+    - progress
+    - setup
+    - a_to_b
+    - avoid
+    - export
+
+# Simple daily walk card
+- type: custom:wandr-card
+  title: Today's Walk
+  columns: 2
+  sections:
+    - summary
+    - stats
+    - remote
+    - map
+
+# Remote only
+- type: custom:wandr-card
+  title: Route Remote
+  columns: 1
+  sections:
+    - remote
+
+# Setup only
+- type: custom:wandr-card
+  title: wandr Setup
+  columns: 1
+  sections:
+    - setup
+    - a_to_b
+
+# Minimal map card
+- type: custom:wandr-card
+  title: Map
+  show_header: false
+  columns: 1
+  sections:
+    - map
