@@ -18,6 +18,27 @@ wandr is a beta custom integration. It is intended to be installed through HACS 
 
 It is not affiliated with Home Assistant, HACS, Google Maps, OpenStreetMap, Nominatim, Overpass, or OpenTopoData.
 
+## Compatibility
+
+wandr targets Home Assistant `2024.12.0` and newer.
+
+Supported install types:
+
+- Home Assistant OS / HAOS
+- Home Assistant Container / Docker
+- Home Assistant Supervised
+- Home Assistant Core / venv, best effort
+
+For setup-specific notes and troubleshooting, see [`SUPPORT.md`](SUPPORT.md).
+
+wandr needs outbound HTTPS access to:
+
+```text
+nominatim.openstreetmap.org
+overpass-api.de
+api.opentopodata.org
+```
+
 ## Features
 
 - Loop routes or A-to-B routes
@@ -88,6 +109,8 @@ Use this if you want to test wandr without HACS.
    ```text
    Settings → Devices & services → Add integration → wandr
    ```
+
+For Docker/Container installs, `/config` means the Home Assistant container's config path. The host folder depends on your volume mapping.
 
 ## First setup
 
@@ -221,6 +244,7 @@ wandr.generate_year
 wandr.next_route
 wandr.previous_route
 wandr.random_route
+wandr.pick_daily_route
 wandr.pick_today_route
 wandr.mark_completed
 wandr.skip_today
