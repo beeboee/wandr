@@ -42,7 +42,12 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 M_PER_MILE = 1609.344
-OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+OVERPASS_URLS = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.openstreetmap.ru/api/interpreter",
+]
+OVERPASS_URL = OVERPASS_URLS[0]
 ELEVATION_URL = "https://api.opentopodata.org/v1/ned10m"
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 
@@ -293,14 +298,20 @@ class WandrCoordinator(DataUpdateCoordinator):
             sections.append(item)
         self.state["blocked_sections"] = sections
         self.state["selected_blocked_section"] = label
-        await self.generate_year()
+        self.state["last_error"] = ""
+        self.state["generation_status"] = "Avoid rule saved"
+        self.state["last_generation_summary"] = "Avoid rule saved. Press Regenerate to rebuild routes around it."
+        await self.save()
 
     async def remove_selected_blocked_section(self):
         selected = self.state.get("selected_blocked_section") or ""
         sections = self.state.get("blocked_sections") or []
         self.state["blocked_sections"] = [s for s in sections if section_label(s) != selected]
         self.state["selected_blocked_section"] = ""
-        await self.generate_year()
+        self.state["last_error"] = ""
+        self.state["generation_status"] = "Avoid rule removed"
+        self.state["last_generation_summary"] = "Avoid rule removed. Press Regenerate to rebuild routes around the updated list."
+        await self.save()
 
     async def clear_history(self):
         self.state["history"] = []
@@ -464,9 +475,10 @@ class WandrCoordinator(DataUpdateCoordinator):
             self.state["last_generation_summary"] = f"Generated {len(routes)} routes around {round(target_m / M_PER_MILE, 2)} mi using {route_style}."
         except Exception as err:
             _LOGGER.exception("wandr generation failed")
-            self.state["last_error"] = str(err)
+            friendly = friendly_error_message(err)
+            self.state["last_error"] = friendly
             self.state["generation_status"] = "Error"
-            self.state["validation_warnings"] = [str(err)]
+            self.state["validation_warnings"] = [friendly]
         await self.save()
 
     async def _geocode(self, address: str) -> tuple[float, float]:
@@ -491,10 +503,30 @@ class WandrCoordinator(DataUpdateCoordinator):
         >;
         out skel qt;
         """
-        async with aiohttp.ClientSession() as session:
-            async with session.post(OVERPASS_URL, data={"data": query}, timeout=60) as resp:
-                resp.raise_for_status()
-                data = await resp.json()
+        data = None
+        last_error: Exception | None = None
+        headers = {"User-Agent": "HomeAssistant-wandr/1.0"}
+        async with aiohttp.ClientSession(headers=headers) as session:
+            for url in OVERPASS_URLS:
+                try:
+                    async with session.post(url, data={"data": query}, timeout=75) as resp:
+                        if resp.status in (429, 502, 503, 504):
+                            body = await resp.text()
+                            last_error = RuntimeError(f"Overpass HTTP {resp.status}: {body[:180]}")
+                            _LOGGER.warning("wandr Overpass endpoint failed: %s returned HTTP %s", url, resp.status)
+                            continue
+                        resp.raise_for_status()
+                        data = await resp.json()
+                        break
+                except Exception as err:
+                    last_error = err
+                    _LOGGER.warning("wandr Overpass endpoint failed: %s: %s", url, err)
+                    continue
+        if data is None:
+            raise RuntimeError(
+                "Map data service is busy or rate-limited. Wait 15-30 minutes, then press Generate once. "
+                f"Last Overpass error: {friendly_error_message(last_error) if last_error else 'unknown error'}"
+            )
 
         nodes: dict[int, tuple[float, float]] = {}
         raw_ways: list[tuple[list[int], str, str]] = []
@@ -711,6 +743,32 @@ def parse_time_parts(value: str):
         return parts[0], parts[1], parts[2]
     except Exception:
         return 6, 0, 0
+
+
+def friendly_error_message(err: Exception | None) -> str:
+    if err is None:
+        return "Unknown error."
+
+    if isinstance(err, aiohttp.ClientResponseError):
+        status = err.status
+        url = str(err.request_info.real_url) if err.request_info else ""
+        service = "Map data service" if "overpass" in url else "External service"
+        if status == 429:
+            return f"{service} is rate-limiting requests. Wait 15-30 minutes, then press Generate once."
+        if status in (502, 503, 504):
+            return f"{service} is busy or timed out. Wait a few minutes, then try again."
+        return f"{service} returned HTTP {status}. Try again later."
+
+    text = str(err)
+    if "429" in text and "Overpass" in text:
+        return "Map data service is rate-limiting requests. Wait 15-30 minutes, then press Generate once."
+    if any(code in text for code in ("502", "503", "504")) and "Overpass" in text:
+        return "Map data service is busy or timed out. Wait a few minutes, then try again."
+    if "Too Many Requests" in text:
+        return "Map data service is rate-limiting requests. Wait 15-30 minutes, then press Generate once."
+    if "Gateway Timeout" in text:
+        return "Map data service is busy or timed out. Wait a few minutes, then try again."
+    return text or "Unknown error."
 
 
 def section_label(item: dict[str, str]) -> str:
