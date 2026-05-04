@@ -1,0 +1,83 @@
+type: grid
+columns: 3
+square: false
+cards:
+  - type: custom:button-card
+    entity: button.wandr_previous_route
+    icon: mdi:chevron-left
+    name: Prev
+    tap_action:
+      action: press
+    styles:
+      card:
+        - border-radius: 20px
+        - height: 80px
+      icon:
+        - color: '#24B33B'
+
+  - type: custom:button-card
+    entity: button.wandr_pick_today_route
+    icon: mdi:calendar-star
+    name: Today
+    tap_action:
+      action: press
+    styles:
+      card:
+        - border-radius: 20px
+        - height: 80px
+        - background: rgba(36,179,59,0.18)
+      icon:
+        - color: '#24B33B'
+
+  - type: custom:button-card
+    entity: button.wandr_next_route
+    icon: mdi:chevron-right
+    name: Next
+    tap_action:
+      action: press
+    styles:
+      card:
+        - border-radius: 20px
+        - height: 80px
+      icon:
+        - color: '#24B33B'
+
+  - type: custom:button-card
+    entity: button.wandr_random_route
+    icon: mdi:dice-5
+    name: Random
+    tap_action:
+      action: press
+    styles:
+      card:
+        - border-radius: 20px
+        - height: 80px
+      icon:
+        - color: '#24B33B'
+
+  - type: custom:button-card
+    entity: button.wandr_generate_routes
+    icon: mdi:refresh
+    name: Generate
+    tap_action:
+      action: press
+    styles:
+      card:
+        - border-radius: 20px
+        - height: 80px
+      icon:
+        - color: '#24B33B'
+
+  - type: custom:button-card
+    entity: button.wandr_mark_completed
+    icon: mdi:check-circle
+    name: Done
+    tap_action:
+      action: press
+    styles:
+      card:
+        - border-radius: 20px
+        - height: 80px
+        - background: rgba(36,179,59,0.22)
+      icon:
+        - color: '#24B33B'
