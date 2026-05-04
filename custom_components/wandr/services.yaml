@@ -170,6 +170,10 @@ add_blocked_section:
       required: false
       selector:
         text:
+remove_selected_blocked_section:
+  name: Remove selected blocked street section
+  description: Removes the selected blocked street section, then regenerates routes.
+  fields: {}
 clear_history:
   name: Clear history
   description: Clears completion/skip history.
