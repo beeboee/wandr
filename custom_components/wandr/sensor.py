@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+from urllib.parse import quote_plus
+
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import DOMAIN, DEFAULT_MAP_APP
 
 SENSORS = [
     ("route_name", "Route Name", None, None),
@@ -14,6 +16,8 @@ SENSORS = [
     ("duration_minutes", "Estimated Duration", "min", "mdi:clock-outline"),
     ("elevation_gain_ft", "Elevation Gain", "ft", "mdi:image-filter-hdr"),
     ("google_maps_url", "Google Maps URL", None, "mdi:google-maps"),
+    ("preferred_map_url", "Preferred Map URL", None, "mdi:map"),
+    ("map_app", "Map App", None, "mdi:map-check"),
     ("mode", "Mode", None, "mdi:map-marker-path"),
     ("start_address", "Start Address", None, "mdi:map-marker"),
     ("end_address", "End Address", None, "mdi:map-marker-check"),
@@ -25,6 +29,7 @@ SENSORS = [
     ("finish_by_target_distance_miles", "A-to-B Finish Target Distance", "mi", "mdi:clock-end"),
     ("blacklist", "Blacklist", None, "mdi:cancel"),
     ("blocked_sections_count", "Blocked Street Sections", None, "mdi:road-variant"),
+    ("blocked_sections_list", "Avoid List", None, "mdi:format-list-bulleted"),
     ("route_count", "Generated Route Count", None, "mdi:counter"),
     ("day_number", "Day Number", None, "mdi:calendar-today"),
     ("today_status", "Today Status", None, "mdi:checkbox-marked-circle-outline"),
@@ -73,6 +78,10 @@ class WandrSensor(CoordinatorEntity, SensorEntity):
             return route.get("elevation_gain_ft")
         if self._key == "google_maps_url":
             return route.get("google_maps_url", "")
+        if self._key == "preferred_map_url":
+            return preferred_map_url(route, state.get("map_app") or self.coordinator.entry.data.get("map_app") or DEFAULT_MAP_APP)
+        if self._key == "map_app":
+            return state.get("map_app") or self.coordinator.entry.data.get("map_app") or DEFAULT_MAP_APP
         if self._key == "directions_url":
             return route.get("directions_url", "/local/wandr/current_directions.html")
         if self._key == "gpx_url":
@@ -115,6 +124,12 @@ class WandrSensor(CoordinatorEntity, SensorEntity):
             return state.get("blacklist", "")
         if self._key == "blocked_sections_count":
             return len(state.get("blocked_sections") or [])
+        if self._key == "blocked_sections_list":
+            sections = state.get("blocked_sections") or []
+            if not sections:
+                return "None"
+            labels = [section_label(s) for s in sections]
+            return "; ".join(labels[:5]) + ("; …" if len(labels) > 5 else "")
         if self._key == "route_count":
             return len(state.get("routes") or [])
         if self._key == "day_number":
@@ -155,8 +170,42 @@ class WandrSensor(CoordinatorEntity, SensorEntity):
                 "directions": route.get("directions"),
                 "quality_score": route.get("quality_score"),
             }
-        if self._key == "blocked_sections_count":
+        if self._key in ("blocked_sections_count", "blocked_sections_list"):
             return {"blocked_sections": [s for s in self.coordinator.state.get("blocked_sections", [])]}
         if self._key == "validation_warnings":
             return {"warnings": self.coordinator.state.get("validation_warnings") or []}
         return None
+
+
+def section_label(item: dict[str, str]) -> str:
+    street = item.get("street", "").strip()
+    a = item.get("from", "").strip()
+    b = item.get("to", "").strip()
+    if a or b:
+        return f"{street}: {a or '?'} to {b or '?'}"
+    return street
+
+
+def preferred_map_url(route: dict, map_app: str) -> str:
+    coords = route.get("coords") if route else []
+    if not coords:
+        return ""
+
+    origin = f"{coords[0][0]},{coords[0][1]}"
+    dest = f"{coords[-1][0]},{coords[-1][1]}"
+    waypoint_coords = coords[1:-1]
+    if len(waypoint_coords) > 8:
+        step = max(1, len(waypoint_coords) // 8)
+        waypoint_coords = waypoint_coords[::step][:8]
+    waypoints = "|".join(f"{a},{b}" for a, b in waypoint_coords)
+
+    if map_app == "Apple Maps":
+        # Apple Maps URLs do not support as rich a walking waypoint flow, so use origin/destination.
+        return "https://maps.apple.com/?dirflg=w&saddr=" + quote_plus(origin) + "&daddr=" + quote_plus(dest)
+    if map_app == "Waze":
+        # Waze walking routes are limited; this opens navigation to the destination.
+        return "https://waze.com/ul?ll=" + quote_plus(dest) + "&navigate=yes"
+    if map_app == "OpenStreetMap":
+        return "https://www.openstreetmap.org/directions?engine=fossgis_osrm_foot&route=" + quote_plus(origin + ";" + dest)
+
+    return "https://www.google.com/maps/dir/?api=1&travelmode=walking&origin=" + quote_plus(origin) + "&destination=" + quote_plus(dest) + ("&waypoints=" + quote_plus(waypoints) if waypoints else "")
