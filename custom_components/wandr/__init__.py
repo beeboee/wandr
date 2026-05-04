@@ -14,27 +14,31 @@ FRONTEND_DIR = Path(__file__).parent / "frontend"
 
 
 async def _register_frontend_path(hass: HomeAssistant) -> None:
-    """Register the bundled Lovelace card path when supported by this HA version."""
-    static_config = None
+    """Register the bundled Lovelace card path when supported by this HA version.
 
+    The backend integration must keep loading even if frontend registration changes
+    across Home Assistant versions.
+    """
     try:
         from homeassistant.components.http import StaticPathConfig
 
-        static_config = StaticPathConfig(
-            f"/{DOMAIN}/frontend",
-            str(FRONTEND_DIR),
-            False,
-        )
+        register_paths = getattr(hass.http, "async_register_static_paths", None)
+        if register_paths is None:
+            _LOGGER.debug("async_register_static_paths unavailable; frontend card path not registered")
+            return
+
+        await register_paths([
+            StaticPathConfig(
+                f"/{DOMAIN}/frontend",
+                str(FRONTEND_DIR),
+                False,
+            )
+        ])
     except Exception as err:
-        _LOGGER.debug("StaticPathConfig unavailable; frontend card path not registered: %s", err)
-        return
-
-    register_paths = getattr(hass.http, "async_register_static_paths", None)
-    if register_paths is None:
-        _LOGGER.debug("async_register_static_paths unavailable; frontend card path not registered")
-        return
-
-    await register_paths([static_config])
+        _LOGGER.warning(
+            "Could not register wandr frontend card path. The integration will still run, but the bundled Lovelace card may need to be loaded manually: %s",
+            err,
+        )
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -75,7 +79,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     async def set_a_to_b_deviation(call: ServiceCall):
         await (await get_coord()).set_a_to_b_deviation(
-            call.data.get("mode", "Desired total distance"), call.data.get("percent"), call.data.get("minutes"), call.data.get("total_miles"), call.data.get("extra_miles"), call.data.get("finish_time")
+            call.data.get("mode", "Desired total distance"),
+            call.data.get("percent"),
+            call.data.get("minutes"),
+            call.data.get("total_miles"),
+            call.data.get("extra_miles"),
+            call.data.get("finish_time"),
         )
 
     async def add_blocked_section(call: ServiceCall):
@@ -103,6 +112,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.services.async_register(DOMAIN, "previous_route", previous_route)
     hass.services.async_register(DOMAIN, "random_route", random_route)
     hass.services.async_register(DOMAIN, "pick_daily_route", pick_daily_route)
+    hass.services.async_register(DOMAIN, "pick_today_route", pick_daily_route)
     hass.services.async_register(DOMAIN, "mark_completed", mark_completed)
     hass.services.async_register(DOMAIN, "skip_today", skip_today)
     hass.services.async_register(DOMAIN, "set_blacklist", set_blacklist)
@@ -113,6 +123,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.services.async_register(DOMAIN, "export_settings", export_settings)
     hass.services.async_register(DOMAIN, "import_settings", import_settings)
     return True
+
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator = hass.data.get(DOMAIN, {}).get(entry.entry_id)
