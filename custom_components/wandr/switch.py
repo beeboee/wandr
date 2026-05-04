@@ -10,7 +10,7 @@ from .const import DOMAIN
 
 SWITCHES = [
     ("loop_route", "wandr Loop Route", "mdi:map-marker-path"),
-    ("auto_pick_daily_route", "wandr Auto Pick Daily Route", "mdi:calendar-clock"),
+    ("auto_pick_daily_route", "wandr Auto Pick Route", "mdi:calendar-clock"),
     ("allow_relaxed_fallback", "wandr Allow Relaxed Fallback", "mdi:tune"),
 ]
 

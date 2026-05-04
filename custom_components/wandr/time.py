@@ -12,7 +12,7 @@ from .const import DOMAIN, DEFAULT_DAILY_PICK_TIME, DEFAULT_AB_FINISH_TIME
 from .coordinator import parse_time_parts
 
 TIME_ENTITIES = [
-    ("daily_pick_time", "wandr Daily Pick Time", DEFAULT_DAILY_PICK_TIME, "mdi:calendar-clock"),
+    ("daily_pick_time", "wandr Pick Time", DEFAULT_DAILY_PICK_TIME, "mdi:calendar-clock"),
     ("ab_finish_time", "wandr A-to-B Finish By Time", DEFAULT_AB_FINISH_TIME, "mdi:clock-end"),
 ]
 
