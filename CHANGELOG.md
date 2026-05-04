@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.5-beta
+
+- Reworked the example dashboard into clearer sections: Today, Navigate, Generate, Avoid List, Progress, and Files & Backup.
+- Added a Generation Type selector for Loop route vs A-to-B route.
+- Added a Map App selector and preferred map URL sensor for Google Maps, Apple Maps, Waze, and OpenStreetMap.
+- Added an Avoid List summary sensor so blocked streets/sections can be shown as a list card.
+- Kept the existing street-section block workflow, but renamed dashboard controls around adding/removing avoid items.
+
 ## 1.0.4-beta
 
 - Added a live-updating map renderer so the route preview can update after Next, Previous, or Random without relying on the dashboard iframe to reload.
