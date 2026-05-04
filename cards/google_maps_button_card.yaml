@@ -1,0 +1,17 @@
+type: custom:button-card
+name: Open in Google Maps
+icon: mdi:google-maps
+tap_action:
+  action: url
+  url_path: |
+    [[[ return states['sensor.wandr_google_maps_url']?.state || '#'; ]]]
+styles:
+  card:
+    - border-radius: 20px
+    - height: 70px
+    - background: var(--wandr-accent-color, var(--primary-color))
+  icon:
+    - color: white
+  name:
+    - color: white
+    - font-weight: 700
