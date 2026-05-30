@@ -11,6 +11,7 @@ from .coordinator import WandrCoordinator
 from . import coordinator as wandr_coordinator
 from .map_html import render_map_html as live_render_map_html
 from .route_library import patch_route_library
+from .auto_library import patch_auto_library_generation
 
 _LOGGER = logging.getLogger(__name__)
 FRONTEND_DIR = Path(__file__).parent / "frontend"
@@ -47,6 +48,7 @@ async def _register_frontend_path(hass: HomeAssistant) -> None:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     wandr_coordinator.render_map_html = live_render_map_html
     patch_route_library(WandrCoordinator)
+    patch_auto_library_generation(WandrCoordinator)
 
     coordinator = WandrCoordinator(hass, entry)
     await coordinator.async_load()
