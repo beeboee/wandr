@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.8-beta
+
+- Replaced the separate route and avoid custom card approach with one `custom:wandr-card` card type.
+- Added a visual editor dropdown for the card content: Route + map, Avoid list, Generate, Navigate, Progress, and Files.
+- Updated the example dashboard to use only `custom:wandr-card` with different `view` values.
+- Added route-library artifact writing under `/local/wandr/routes/`, including `index.json`, `all_routes.json`, per-route JSON, directions HTML, GPX, and GeoJSON.
+- Added an optional Home Assistant automation YAML example to generate the route library after startup when routes are missing or below the configured route count.
+
 ## 1.0.7-beta
 
 - Added a custom `wandr-route-card` Lovelace card with route summary, route controls, and a Leaflet map that updates from Home Assistant state instead of relying on an iframe.
