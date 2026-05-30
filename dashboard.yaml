@@ -6,20 +6,20 @@ max_columns: 2
 sections:
   - type: grid
     cards:
-      - type: custom:wandr-route-card
+      - type: custom:wandr-card
+        view: route
         route_entity: sensor.wandr_route_name
         json_url: /local/wandr/current_route.json
 
   - type: grid
     cards:
-      - type: custom:wandr-avoid-card
+      - type: custom:wandr-card
+        view: avoid
 
   - type: grid
     cards:
-      - type: heading
-        heading: Generate
-        heading_style: title
-        icon: mdi:tune
+      - type: custom:wandr-card
+        view: generate
 
       - type: entities
         title: Route Settings
@@ -38,7 +38,7 @@ sections:
           - entity: select.wandr_route_style
             name: Style
           - entity: number.wandr_base_route_count
-            name: Route Count
+            name: Base Route Count
           - entity: switch.wandr_allow_relaxed_fallback
             name: Relaxed Fallback
 
@@ -56,65 +56,14 @@ sections:
             name: Extra Minutes
           - entity: time.wandr_a_to_b_finish_by_time
             name: Finish By
-          - entity: sensor.wandr_a_to_b_goal_plan
-            name: Summary
-
-      - type: button
-        entity: button.wandr_generate_routes
-        name: Generate Routes
-        icon: mdi:refresh
-        tap_action:
-          action: press
-
-      - type: entities
-        title: Status
-        show_header_toggle: false
-        entities:
-          - entity: sensor.wandr_generation_status
-            name: Status
-          - entity: sensor.wandr_configured_route_count
-            name: Requested Base Routes
-          - entity: sensor.wandr_generated_route_count
-            name: Generated Routes
-          - entity: sensor.wandr_last_generation_summary
-            name: Summary
-          - entity: sensor.wandr_validation_warnings
-            name: Warnings
-          - entity: sensor.wandr_last_error
-            name: Last Error
 
   - type: grid
     cards:
-      - type: heading
-        heading: Navigate
-        heading_style: title
-        icon: mdi:map
+      - type: custom:wandr-card
+        view: navigate
 
-      - type: entities
-        title: Map App
-        show_header_toggle: false
-        entities:
-          - entity: select.wandr_map_app
-            name: Preferred App
-          - entity: sensor.wandr_preferred_map_url
-            name: Open URL
-
-      - type: entities
-        title: Progress
-        show_header_toggle: false
-        entities:
-          - entity: sensor.wandr_current_streak
-            name: Streak
-          - entity: sensor.wandr_this_week_walks
-            name: Week Walks
-          - entity: sensor.wandr_this_week_miles
-            name: Week Miles
-          - entity: sensor.wandr_this_month_walks
-            name: Month Walks
-          - entity: sensor.wandr_this_month_miles
-            name: Month Miles
-          - entity: sensor.wandr_history_entries
-            name: History
+      - type: custom:wandr-card
+        view: progress
 
       - type: entities
         title: Daily Automation
@@ -127,35 +76,5 @@ sections:
 
   - type: grid
     cards:
-      - type: heading
-        heading: Files & Backup
-        heading_style: title
-        icon: mdi:file-export
-
-      - type: entities
-        title: Route Files
-        show_header_toggle: false
-        entities:
-          - entity: sensor.wandr_directions_url
-            name: Directions
-          - entity: sensor.wandr_gpx_url
-            name: GPX
-          - entity: sensor.wandr_geojson_url
-            name: GeoJSON
-
-      - type: grid
-        columns: 2
-        square: false
-        cards:
-          - type: button
-            entity: button.wandr_export_settings
-            name: Export Settings
-            icon: mdi:download
-            tap_action:
-              action: press
-          - type: button
-            entity: button.wandr_import_settings
-            name: Import Settings
-            icon: mdi:upload
-            tap_action:
-              action: press
+      - type: custom:wandr-card
+        view: files
