@@ -1,0 +1,20 @@
+alias: wandr - Generate route library when missing
+id: wandr_generate_route_library_when_missing
+mode: single
+trigger:
+  - platform: homeassistant
+    event: start
+condition:
+  - condition: or
+    conditions:
+      - condition: state
+        entity_id: sensor.wandr_generated_route_count
+        state: "0"
+      - condition: template
+        value_template: >-
+          {{ states('sensor.wandr_generated_route_count') | int(0) < states('sensor.wandr_configured_route_count') | int(183) }}
+action:
+  - delay: "00:01:00"
+  - service: button.press
+    target:
+      entity_id: button.wandr_generate_routes
