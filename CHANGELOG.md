@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.9-beta
+
+- Changed bulk route-library generation to be guarded and first-run only.
+- Automatic bulk generation now only runs when wandr is in loop/circle mode, a start/home address exists, no routes are already loaded, and the current home/settings signature has not already been attempted.
+- Added a delayed startup/task-based auto-generation flow so Home Assistant can finish loading before wandr tries to build the local route library.
+- Removed the need for the optional startup automation for the normal first-run loop route-library case.
+
 ## 1.0.8-beta
 
 - Replaced the separate route and avoid custom card approach with one `custom:wandr-card` card type.
