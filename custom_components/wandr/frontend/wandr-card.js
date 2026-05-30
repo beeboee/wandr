@@ -1,636 +1,109 @@
 class WandrCard extends HTMLElement {
-  static getStubConfig() {
-    return { layout: "daily" };
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+    this._config = { view: 'route' };
+    this._hass = null;
+    this._lastKey = '';
+    this._map = null;
+    this._line = null;
+    this._start = null;
+    this._end = null;
+    this._leafletPromise = null;
   }
 
-  setConfig(config = {}) {
-    this.config = this._normalizeConfig(config);
-    this._rendered = false;
-    this._renderStatic();
-    this._updateDynamicValues();
+  static getConfigElement() { return document.createElement('wandr-card-editor'); }
+  static getStubConfig() { return { view: 'route' }; }
+  getCardSize() { return this._config.view === 'route' ? 7 : 4; }
+
+  setConfig(config) {
+    this._config = {
+      view: 'route',
+      route_entity: 'sensor.wandr_route_name',
+      json_url: '/local/wandr/current_route.json',
+      ...config,
+    };
+    this._lastKey = '';
+    this._map = null;
+    this._render();
   }
 
   set hass(hass) {
     this._hass = hass;
-    if (!this._rendered) this._renderStatic();
-    this._updateDynamicValues();
+    this._update();
   }
 
-  getCardSize() {
-    const sizes = { daily: 8, planner: 6, avoid: 5, stats: 3, custom: 6 };
-    return sizes[this.config?.layout] || 6;
+  _state(id) { return this._hass?.states?.[id]; }
+  _value(id, fallback = '') {
+    const s = this._state(id);
+    return (!s || s.state === 'unknown' || s.state === 'unavailable') ? fallback : s.state;
   }
 
-  _normalizeConfig(config) {
-    const layout = config.layout || "daily";
-    const layouts = {
-      daily: ["hero_stats", "map", "daily_controls", "progress_compact"],
-      planner: ["planner", "a_to_b", "generation_controls"],
-      avoid: ["avoid"],
-      stats: ["progress"],
-      custom: config.sections || ["hero_stats", "map", "daily_controls"],
-    };
-
-    const normalized = {
-      layout,
-      sections: layouts[layout] || layouts.daily,
-      columns: layout === "stats" ? 1 : 1,
-      show_header: false,
-      map_height: layout === "daily" ? "390px" : "320px",
-      ...config,
-    };
-
-    if (layout !== "custom") {
-      normalized.sections = layouts[layout] || layouts.daily;
-    } else if (!Array.isArray(normalized.sections)) {
-      normalized.sections = [normalized.sections];
-    }
-
-    return normalized;
+  _styles() {
+    return `:host{display:block}.card{border-radius:28px;background:var(--ha-card-background,var(--card-background-color));color:var(--primary-text-color);border:1px solid color-mix(in srgb,var(--primary-text-color) 9%,transparent);box-shadow:var(--ha-card-box-shadow,0 12px 30px rgba(0,0,0,.18));overflow:hidden}.pad{padding:22px}.head{display:flex;gap:14px;align-items:center;margin-bottom:16px}.badge{width:52px;height:52px;border-radius:19px;display:grid;place-items:center;background:color-mix(in srgb,var(--primary-color) 22%,transparent);color:var(--primary-color)}.badge.warn{background:color-mix(in srgb,var(--warning-color,#f59e0b) 22%,transparent);color:var(--warning-color,#f59e0b)}.badge ha-icon{--mdc-icon-size:29px}.title{font-size:25px;font-weight:850;letter-spacing:-.03em}.sub{margin-top:4px;opacity:.68;font-size:13px;line-height:1.3}.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.pill{border-radius:21px;padding:15px;background:color-mix(in srgb,var(--primary-text-color) 5%,transparent);border:1px solid color-mix(in srgb,var(--primary-text-color) 8%,transparent);min-width:0}.label{font-size:12px;opacity:.62;margin-bottom:7px}.value{font-size:20px;font-weight:800;letter-spacing:-.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}button{border:0;border-radius:18px;padding:14px 10px;min-height:50px;font:inherit;font-weight:800;color:var(--primary-text-color);background:color-mix(in srgb,var(--primary-text-color) 7%,transparent);cursor:pointer}button.primary{background:color-mix(in srgb,var(--primary-color) 30%,transparent)}button.warn{background:color-mix(in srgb,var(--warning-color,#f59e0b) 24%,transparent)}button:active{transform:scale(.985)}input,select{width:100%;box-sizing:border-box;border:0;outline:0;border-radius:18px;min-height:48px;padding:0 14px;background:color-mix(in srgb,var(--primary-text-color) 6%,transparent);color:var(--primary-text-color);font:inherit;font-weight:650;border:1px solid color-mix(in srgb,var(--primary-text-color) 9%,transparent)}label{display:block;font-size:12px;opacity:.65;margin:10px 0 6px 4px}.mt{margin-top:14px}.small{font-size:12px;opacity:.62;line-height:1.35}.list{margin-top:16px;border-radius:22px;background:color-mix(in srgb,var(--primary-text-color) 4%,transparent);border:1px solid color-mix(in srgb,var(--primary-text-color) 8%,transparent);overflow:hidden}.item{padding:13px 14px;border-bottom:1px solid color-mix(in srgb,var(--primary-text-color) 7%,transparent)}.item:last-child{border-bottom:0}.item-main{font-weight:780;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.item-sub{font-size:12px;opacity:.62;margin-top:3px}#map{height:300px;border-radius:24px;overflow:hidden;background:color-mix(in srgb,var(--primary-text-color) 5%,transparent);border:1px solid color-mix(in srgb,var(--primary-text-color) 8%,transparent)}@media(max-width:560px){.grid2,.grid3{grid-template-columns:1fr}#map{height:260px}}`;
   }
 
-  _state(entityId) {
-    const value = this._hass?.states?.[entityId]?.state;
-    if (value === undefined || value === null || value === "unknown" || value === "unavailable") return "—";
-    return value;
+  _render() {
+    const view = this._config.view || 'route';
+    if (view === 'avoid') return this._renderAvoid();
+    if (view === 'generate') return this._renderGenerate();
+    if (view === 'navigate') return this._renderNavigate();
+    if (view === 'progress') return this._renderProgress();
+    if (view === 'files') return this._renderFiles();
+    return this._renderRoute();
   }
 
-  _number(entityId) {
-    const value = Number(this._state(entityId));
-    return Number.isFinite(value) ? value : 0;
+  _renderRoute() {
+    this.shadowRoot.innerHTML = `<style>${this._styles()}</style><div class="card"><div class="pad"><div class="head"><div class="badge"><ha-icon icon="mdi:walk"></ha-icon></div><div style="min-width:0"><div class="title" id="name">wandr</div><div class="sub" id="meta">Loading route…</div></div></div><div class="grid2"><div class="pill"><div class="label">Distance</div><div class="value" id="distance">—</div></div><div class="pill"><div class="label">Duration</div><div class="value" id="duration">—</div></div><div class="pill"><div class="label">Elevation</div><div class="value" id="elevation">—</div></div><div class="pill"><div class="label">Quality</div><div class="value" id="quality">—</div></div></div><div class="mt"><div id="map"></div></div><div class="grid3 mt"><button data-action="previous">Prev</button><button data-action="random">Random</button><button data-action="next">Next</button><button data-action="today" class="primary">Today</button><button data-action="open">Maps</button><button data-action="done" class="primary">Done</button></div><div class="small mt" id="foot">Synced from current_route.json.</div></div></div>`;
+    this.shadowRoot.querySelectorAll('[data-action]').forEach(b => b.addEventListener('click', () => this._action(b.dataset.action)));
   }
 
-  _callService(service) {
-    if (!this._hass || !service) return;
-    this._hass.callService("wandr", service);
+  _renderAvoid() {
+    this.shadowRoot.innerHTML = `<style>${this._styles()}</style><div class="card"><div class="pad"><div class="head"><div class="badge warn"><ha-icon icon="mdi:map-marker-remove"></ha-icon></div><div><div class="title">Avoid list</div><div class="sub">Add blocked streets or specific street sections.</div></div></div><label>Pick from current route</label><select id="streetSelect"></select><label>Street or path to avoid</label><input id="streetInput" placeholder="Street, path, trail, alley"><div class="grid2"><div><label>From cross street</label><input id="fromInput" placeholder="Optional"></div><div><label>To cross street</label><input id="toInput" placeholder="Optional"></div></div><label>Existing block</label><select id="blockedSelect"></select><div class="grid3 mt"><button class="primary" id="addBtn">Add</button><button class="warn" id="removeBtn">Remove</button><button id="regenBtn">Regenerate</button></div><div class="list" id="listItems"></div></div></div>`;
+    this.shadowRoot.getElementById('streetSelect').addEventListener('change', e => this._pickStreet(e.target.value));
+    this.shadowRoot.getElementById('blockedSelect').addEventListener('change', e => this._selectBlocked(e.target.value));
+    this.shadowRoot.getElementById('streetInput').addEventListener('change', e => this._setText('text.wandr_street_to_avoid', e.target.value));
+    this.shadowRoot.getElementById('fromInput').addEventListener('change', e => this._setText('text.wandr_avoid_from_cross_street', e.target.value));
+    this.shadowRoot.getElementById('toInput').addEventListener('change', e => this._setText('text.wandr_avoid_to_cross_street', e.target.value));
+    this.shadowRoot.getElementById('addBtn').addEventListener('click', () => this._press('button.wandr_avoid_selected_street_section'));
+    this.shadowRoot.getElementById('removeBtn').addEventListener('click', () => this._press('button.wandr_remove_blocked_street_section'));
+    this.shadowRoot.getElementById('regenBtn').addEventListener('click', () => this._press('button.wandr_generate_routes'));
   }
 
-  _moreInfo(entityId) {
-    if (!entityId) return;
-    const event = new Event("hass-more-info", { bubbles: true, cancelable: false, composed: true });
-    event.detail = { entityId };
-    this.dispatchEvent(event);
-  }
+  _renderGenerate(){this.shadowRoot.innerHTML=`<style>${this._styles()}</style><div class="card"><div class="pad"><div class="head"><div class="badge"><ha-icon icon="mdi:tune"></ha-icon></div><div><div class="title">Generate</div><div class="sub">Changing route count or major route settings requires Generate Routes.</div></div></div><div class="grid2"><div class="pill"><div class="label">Requested base routes</div><div class="value" id="configured">—</div></div><div class="pill"><div class="label">Generated routes</div><div class="value" id="generated">—</div></div></div><div class="grid2 mt"><button class="primary" data-action="generate">Generate Routes</button><button data-action="library">Route Library</button></div><div class="small mt" id="summary">—</div></div></div>`;this.shadowRoot.querySelector('[data-action="generate"]').addEventListener('click',()=>this._press('button.wandr_generate_routes'));this.shadowRoot.querySelector('[data-action="library"]').addEventListener('click',()=>{window.location.href='/local/wandr/routes/index.json';});}
+  _renderProgress(){this.shadowRoot.innerHTML=`<style>${this._styles()}</style><div class="card"><div class="pad"><div class="head"><div class="badge"><ha-icon icon="mdi:chart-line"></ha-icon></div><div><div class="title">Progress</div><div class="sub">Walking streak and distance totals.</div></div></div><div class="grid3"><div class="pill"><div class="label">Streak</div><div class="value" id="streak">—</div></div><div class="pill"><div class="label">This week</div><div class="value" id="week">—</div></div><div class="pill"><div class="label">This month</div><div class="value" id="month">—</div></div></div></div></div>`;}
+  _renderNavigate(){this.shadowRoot.innerHTML=`<style>${this._styles()}</style><div class="card"><div class="pad"><div class="head"><div class="badge"><ha-icon icon="mdi:map"></ha-icon></div><div><div class="title">Navigate</div><div class="sub">Open the current route in the selected app.</div></div></div><div class="grid2"><div class="pill"><div class="label">Map app</div><div class="value" id="mapApp">—</div></div><button class="primary" data-action="open">Open Route</button></div></div></div>`;this.shadowRoot.querySelector('[data-action="open"]').addEventListener('click',()=>this._action('open'));}
+  _renderFiles(){this.shadowRoot.innerHTML=`<style>${this._styles()}</style><div class="card"><div class="pad"><div class="head"><div class="badge"><ha-icon icon="mdi:file-export"></ha-icon></div><div><div class="title">Files</div><div class="sub">Current exports and pre-generated route library.</div></div></div><div class="grid2"><button data-open="/local/wandr/current_route.gpx">GPX</button><button data-open="/local/wandr/current_route.geojson">GeoJSON</button><button data-open="/local/wandr/current_directions.html">Directions</button><button class="primary" data-open="/local/wandr/routes/index.json">Route Library</button></div></div></div>`;this.shadowRoot.querySelectorAll('[data-open]').forEach(b=>b.addEventListener('click',()=>{window.location.href=b.dataset.open;}));}
 
-  _openUrl(entityId, fallbackUrl = "") {
-    const url = this._state(entityId);
-    const target = url && url !== "—" && /^https?:\/\//.test(url) ? url : fallbackUrl;
-    if (!target) return;
-    window.open(target, "_blank", "noopener,noreferrer");
-  }
+  async _update(){if(!this._hass||!this.shadowRoot)return;const v=this._config.view||'route';if(v==='route')return this._updateRoute();if(v==='avoid')return this._updateAvoid();if(v==='generate')return this._updateGenerate();if(v==='progress')return this._updateProgress();if(v==='navigate')return this._updateNavigate();}
+  async _updateRoute(){const key=JSON.stringify([this._value('sensor.wandr_route_name'),this._value('sensor.wandr_distance'),this._value('sensor.wandr_estimated_duration'),this._value('sensor.wandr_elevation_gain'),this._value('sensor.wandr_route_quality_score')]);if(key===this._lastKey)return;this._lastKey=key;const name=this._value('sensor.wandr_route_name','No route'),d=this._value('sensor.wandr_distance','—'),m=this._value('sensor.wandr_estimated_duration','—'),e=this._value('sensor.wandr_elevation_gain','—'),q=this._value('sensor.wandr_route_quality_score','—'),mode=this._value('sensor.wandr_mode','');this.shadowRoot.getElementById('name').textContent=name;this.shadowRoot.getElementById('meta').textContent=`${d} mi · ${m} min${mode?' · '+mode:''}`;this.shadowRoot.getElementById('distance').textContent=`${d} mi`;this.shadowRoot.getElementById('duration').textContent=`${m} min`;this.shadowRoot.getElementById('elevation').textContent=e==='—'?'—':`${e} ft`;this.shadowRoot.getElementById('quality').textContent=q;try{await this._draw(await this._routeJson());}catch(err){this.shadowRoot.getElementById('foot').textContent=`Map refresh failed: ${err.message}`;}}
+  _updateAvoid(){this._fillSelect('streetSelect',this._optionsFrom('select.wandr_current_route_street'),this._value('select.wandr_current_route_street'));this._fillSelect('blockedSelect',this._optionsFrom('select.wandr_blocked_street_section'),this._value('select.wandr_blocked_street_section'));this.shadowRoot.getElementById('streetInput').value=this._value('text.wandr_street_to_avoid');this.shadowRoot.getElementById('fromInput').value=this._value('text.wandr_avoid_from_cross_street');this.shadowRoot.getElementById('toInput').value=this._value('text.wandr_avoid_to_cross_street');const list=this.shadowRoot.getElementById('listItems');const items=this._state('sensor.wandr_avoid_list')?.attributes?.blocked_sections||this._state('sensor.wandr_blocked_street_sections')?.attributes?.blocked_sections||[];list.innerHTML=items.length?items.map(i=>`<div class="item"><div class="item-main">${this._esc(i.street||'Unnamed')}</div><div class="item-sub">${this._esc((i.from||i.to)?`${i.from||'?'} to ${i.to||'?'}`:'Whole named street/path')}</div></div>`).join(''):`<div class="item"><div class="item-sub">No blocked streets yet.</div></div>`;}
+  _updateGenerate(){this.shadowRoot.getElementById('configured').textContent=this._value('sensor.wandr_configured_route_count','—');this.shadowRoot.getElementById('generated').textContent=this._value('sensor.wandr_generated_route_count','—');this.shadowRoot.getElementById('summary').textContent=this._value('sensor.wandr_last_generation_summary','No generation summary yet.');}
+  _updateProgress(){this.shadowRoot.getElementById('streak').textContent=`${this._value('sensor.wandr_current_streak','0')} days`;this.shadowRoot.getElementById('week').textContent=`${this._value('sensor.wandr_this_week_walks','0')} / ${this._value('sensor.wandr_this_week_miles','0')} mi`;this.shadowRoot.getElementById('month').textContent=`${this._value('sensor.wandr_this_month_walks','0')} / ${this._value('sensor.wandr_this_month_miles','0')} mi`;}
+  _updateNavigate(){this.shadowRoot.getElementById('mapApp').textContent=this._value('sensor.wandr_map_app','Ask every time');}
 
-  _formatSummary() {
-    const distance = this._state("sensor.wandr_distance");
-    const duration = this._state("sensor.wandr_estimated_duration");
-    const gain = this._state("sensor.wandr_elevation_gain");
-    return `${distance} mi · ${duration} min · ${gain} ft gain`;
-  }
-
-  _climbFlights() {
-    const feet = this._number("sensor.wandr_elevation_gain");
-    if (!feet) return "—";
-    return Math.max(1, Math.round(feet / 10));
-  }
-
-  _button(label, icon, service, extraClass = "") {
-    return `
-      <button class="wandr-button ${extraClass}" data-service="${service}" type="button">
-        <ha-icon icon="${icon}"></ha-icon>
-        <span>${label}</span>
-      </button>
-    `;
-  }
-
-  _urlButton(label, icon, entityId, fallbackUrl = "", extraClass = "") {
-    return `
-      <button class="wandr-button ${extraClass}" data-url="${entityId}" data-fallback-url="${fallbackUrl}" type="button">
-        <ha-icon icon="${icon}"></ha-icon>
-        <span>${label}</span>
-      </button>
-    `;
-  }
-
-  _metric(entityId, label, icon, suffix = "") {
-    return `
-      <button class="wandr-metric" data-entity="${entityId}" type="button">
-        <ha-icon icon="${icon}"></ha-icon>
-        <strong><span data-state="${entityId}">—</span>${suffix}</strong>
-        <span>${label}</span>
-      </button>
-    `;
-  }
-
-  _row(entityId, label, icon, helper = "") {
-    return `
-      <button class="wandr-row" data-entity="${entityId}" type="button">
-        <ha-icon icon="${icon}"></ha-icon>
-        <span>
-          <span class="wandr-label">${label}</span>
-          ${helper ? `<small>${helper}</small>` : ""}
-        </span>
-        <span class="wandr-value" data-state="${entityId}">—</span>
-      </button>
-    `;
-  }
-
-  _field(entityId, label, icon, helper = "") {
-    return `
-      <button class="wandr-field" data-entity="${entityId}" type="button">
-        <ha-icon icon="${icon}"></ha-icon>
-        <span>
-          <span class="wandr-label">${label}</span>
-          <span class="wandr-value" data-state="${entityId}">—</span>
-          ${helper ? `<small>${helper}</small>` : ""}
-        </span>
-      </button>
-    `;
-  }
-
-  _sectionHeroStats() {
-    return `
-      <section class="wandr-section wandr-hero-stats">
-        <button class="wandr-hero-stat" data-entity="sensor.wandr_distance" type="button">
-          <ha-icon icon="mdi:map-marker-distance"></ha-icon>
-          <strong><span data-state="sensor.wandr_distance">—</span></strong>
-          <span>mi</span>
-          <small>Distance</small>
-        </button>
-        <button class="wandr-hero-stat" data-entity="sensor.wandr_estimated_duration" type="button">
-          <ha-icon icon="mdi:clock-outline"></ha-icon>
-          <strong><span data-state="sensor.wandr_estimated_duration">—</span></strong>
-          <span>min</span>
-          <small>Duration</small>
-        </button>
-        <button class="wandr-hero-stat" data-entity="sensor.wandr_elevation_gain" type="button">
-          <ha-icon icon="mdi:stairs-up"></ha-icon>
-          <strong data-climb-flights>—</strong>
-          <span>flights ↑</span>
-          <small>Climb</small>
-        </button>
-      </section>
-    `;
-  }
-
-  _sectionSummary() {
-    return `
-      <section class="wandr-section wandr-summary">
-        <div class="wandr-summary-icon"><ha-icon icon="mdi:walk"></ha-icon></div>
-        <div>
-          <div class="wandr-route-name" data-state="sensor.wandr_route_name">—</div>
-          <div class="wandr-muted" data-summary="route">—</div>
-        </div>
-      </section>
-    `;
-  }
-
-  _sectionMap() {
-    return `
-      <section class="wandr-map-section">
-        <iframe class="wandr-frame" src="/local/wandr/current_route.html"></iframe>
-      </section>
-    `;
-  }
-
-  _sectionDailyControls() {
-    return `
-      <section class="wandr-section wandr-daily-actions">
-        ${this._field("text.wandr_end_address", "Address for A-to-B", "mdi:map-marker-plus", "Tap to edit destination")}
-        <div class="wandr-grid wandr-grid-3">
-          ${this._button("Prev", "mdi:chevron-left", "previous_route")}
-          ${this._button("Random", "mdi:shuffle-variant", "random_route", "wandr-primary")}
-          ${this._button("Next", "mdi:chevron-right", "next_route")}
-        </div>
-        <div class="wandr-grid wandr-grid-4 wandr-secondary-actions">
-          ${this._button("Today", "mdi:calendar-star", "pick_daily_route")}
-          ${this._urlButton("Maps", "mdi:google-maps", "sensor.wandr_google_maps_url", "/local/wandr/current_route.html")}
-          ${this._button("Done", "mdi:check-circle", "mark_completed")}
-          ${this._button("Skip", "mdi:skip-next-circle", "skip_today", "wandr-warning")}
-        </div>
-      </section>
-    `;
-  }
-
-  _sectionPlanner() {
-    return `
-      <section class="wandr-section">
-        <div class="wandr-list">
-          ${this._field("text.wandr_start_address", "Start address", "mdi:map-marker", "For loop routes and fallback starting point")}
-          ${this._row("select.wandr_generation_type", "Route type", "mdi:map-marker-path")}
-          ${this._field("text.wandr_end_address", "A-to-B destination", "mdi:map-marker-check", "Used when route type is A-to-B")}
-          ${this._row("number.wandr_target_miles", "Desired miles", "mdi:map-marker-distance")}
-          ${this._row("number.wandr_pace", "Walking pace", "mdi:speedometer")}
-          ${this._row("select.wandr_route_style", "Route style", "mdi:routes")}
-          ${this._row("select.wandr_map_app", "Map app", "mdi:map")}
-          ${this._row("switch.wandr_allow_relaxed_fallback", "Relaxed fallback", "mdi:shield-check-outline")}
-        </div>
-      </section>
-    `;
-  }
-
-  _sectionAToB() {
-    return `
-      <section class="wandr-section">
-        <div class="wandr-list">
-          ${this._row("select.wandr_a_to_b_goal_mode", "A-to-B goal", "mdi:target")}
-          ${this._row("number.wandr_a_to_b_extra_miles", "Extra miles", "mdi:map-plus")}
-          ${this._row("number.wandr_a_to_b_extra_percent", "Extra percent", "mdi:percent")}
-          ${this._row("number.wandr_a_to_b_extra_minutes", "Extra minutes", "mdi:timer-plus")}
-          ${this._row("time.wandr_a_to_b_finish_by_time", "Finish by", "mdi:clock-end")}
-          ${this._row("sensor.wandr_a_to_b_goal_plan", "Current plan", "mdi:clipboard-text-outline")}
-        </div>
-      </section>
-    `;
-  }
-
-  _sectionGenerationControls() {
-    return `
-      <section class="wandr-section">
-        <div class="wandr-grid wandr-grid-3">
-          ${this._button("Generate", "mdi:refresh", "generate_year", "wandr-primary")}
-          ${this._button("Random", "mdi:shuffle-variant", "random_route")}
-          ${this._button("Today", "mdi:calendar-star", "pick_daily_route")}
-        </div>
-      </section>
-    `;
-  }
-
-  _sectionAvoid() {
-    return `
-      <section class="wandr-section wandr-avoid-card">
-        <div class="wandr-card-title">Avoid segments</div>
-        <p class="wandr-muted wandr-help">Pick a recognized street from the current route, or type one manually. From/To are optional cross streets for blocking only part of it.</p>
-        <div class="wandr-list">
-          ${this._row("select.wandr_current_route_street", "Recognized route street", "mdi:road-variant", "Recommended from current route")}
-          ${this._field("text.wandr_street_to_avoid", "Street to avoid", "mdi:map-marker-remove", "Auto-filled when you choose a recognized street")}
-          <div class="wandr-grid wandr-grid-2">
-            ${this._field("text.wandr_avoid_from_cross_street", "From cross street", "mdi:arrow-left-bottom")}
-            ${this._field("text.wandr_avoid_to_cross_street", "To cross street", "mdi:arrow-right-top")}
-          </div>
-          ${this._row("select.wandr_blocked_street_section", "Blocked list", "mdi:format-list-bulleted", "Tap to select an existing block")}
-          ${this._row("sensor.wandr_blocked_street_sections", "Blocked count", "mdi:counter")}
-        </div>
-        <div class="wandr-grid wandr-grid-3 wandr-actions-row">
-          ${this._button("Add", "mdi:plus", "add_blocked_section", "wandr-primary")}
-          ${this._button("Remove", "mdi:delete", "remove_selected_blocked_section", "wandr-warning")}
-          ${this._button("Regenerate", "mdi:refresh", "generate_year")}
-        </div>
-      </section>
-    `;
-  }
-
-  _sectionProgressCompact() {
-    return `
-      <section class="wandr-section wandr-progress-compact">
-        ${this._metric("sensor.wandr_this_month_miles", "This Month", "mdi:shoe-print", " mi")}
-        ${this._metric("sensor.wandr_current_streak", "Day Streak", "mdi:fire")}
-        ${this._metric("sensor.wandr_this_week_walks", "Walks This Week", "mdi:calendar-week")}
-      </section>
-    `;
-  }
-
-  _sectionProgress() {
-    return `
-      <section class="wandr-section">
-        <div class="wandr-grid wandr-grid-4">
-          ${this._metric("sensor.wandr_this_month_miles", "This Month", "mdi:shoe-print", " mi")}
-          ${this._metric("sensor.wandr_current_streak", "Day Streak", "mdi:fire")}
-          ${this._metric("sensor.wandr_this_week_walks", "Walks This Week", "mdi:calendar-week")}
-          ${this._metric("sensor.wandr_this_week_miles", "Week Miles", "mdi:map-marker-distance", " mi")}
-        </div>
-      </section>
-    `;
-  }
-
-  _sectionExport() {
-    return `
-      <section class="wandr-section">
-        <div class="wandr-grid wandr-grid-2">
-          ${this._button("Export", "mdi:file-export", "export_settings")}
-          ${this._button("Import", "mdi:file-import", "import_settings")}
-        </div>
-        <div class="wandr-list wandr-actions-row">
-          ${this._row("sensor.wandr_directions_url", "Directions URL", "mdi:directions")}
-          ${this._row("sensor.wandr_gpx_url", "GPX URL", "mdi:file-code-outline")}
-          ${this._row("sensor.wandr_geojson_url", "GeoJSON URL", "mdi:code-json")}
-        </div>
-      </section>
-    `;
-  }
-
-  _renderSection(section) {
-    switch (section) {
-      case "hero_stats": return this._sectionHeroStats();
-      case "summary": return this._sectionSummary();
-      case "map": return this._sectionMap();
-      case "daily_controls": return this._sectionDailyControls();
-      case "planner": return this._sectionPlanner();
-      case "a_to_b": return this._sectionAToB();
-      case "generation_controls": return this._sectionGenerationControls();
-      case "avoid": return this._sectionAvoid();
-      case "progress_compact": return this._sectionProgressCompact();
-      case "progress": return this._sectionProgress();
-      case "export": return this._sectionExport();
-      case "stats": return this._sectionHeroStats();
-      case "remote": return this._sectionDailyControls();
-      case "setup": return this._sectionPlanner();
-      default: return `<section class="wandr-section"><div class="wandr-muted">Unknown section: ${section}</div></section>`;
-    }
-  }
-
-  _renderStatic() {
-    if (!this.config) return;
-    const columns = Number(this.config.columns || 1);
-    const safeColumns = Math.max(1, Math.min(columns, 3));
-    const sectionHtml = this.config.sections.map((section) => this._renderSection(section)).join("");
-
-    this.innerHTML = `
-      <ha-card class="wandr-card wandr-layout-${this.config.layout}">
-        <style>
-          .wandr-card {
-            --wandr-accent: var(--wandr-accent-color, var(--primary-color));
-            --wandr-radius: var(--ha-card-border-radius, 20px);
-            --wandr-border: var(--divider-color);
-            overflow: hidden;
-          }
-
-          .wandr-inner {
-            display: grid;
-            grid-template-columns: repeat(${safeColumns}, minmax(0, 1fr));
-            gap: 12px;
-            padding: 14px;
-          }
-
-          .wandr-section {
-            border: 1px solid var(--wandr-border);
-            border-radius: var(--wandr-radius);
-            padding: 12px;
-            background: color-mix(in srgb, var(--card-background-color) 94%, transparent);
-            min-width: 0;
-          }
-
-          .wandr-map-section {
-            border-radius: var(--wandr-radius);
-            overflow: hidden;
-            border: 1px solid var(--wandr-border);
-            background: var(--secondary-background-color);
-          }
-
-          .wandr-frame {
-            width: 100%;
-            height: var(--wandr-frame-height, ${this.config.map_height});
-            border: 0;
-            display: block;
-            background: var(--secondary-background-color);
-          }
-
-          .wandr-hero-stats {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            border: 0;
-            background: transparent;
-            padding: 4px 0 0;
-          }
-
-          .wandr-hero-stat {
-            border: 0;
-            background: transparent;
-            color: var(--primary-text-color);
-            display: grid;
-            justify-items: center;
-            gap: 3px;
-            font: inherit;
-            cursor: pointer;
-            border-right: 1px solid var(--divider-color);
-          }
-
-          .wandr-hero-stat:last-child { border-right: 0; }
-          .wandr-hero-stat ha-icon { color: var(--wandr-accent); }
-          .wandr-hero-stat strong { font-size: 30px; line-height: 1; font-weight: 900; }
-          .wandr-hero-stat span { font-size: 14px; color: var(--primary-text-color); }
-          .wandr-hero-stat small { color: var(--secondary-text-color); font-size: 12px; }
-
-          .wandr-summary {
-            display: grid;
-            grid-template-columns: 42px 1fr;
-            align-items: center;
-            gap: 12px;
-          }
-
-          .wandr-summary-icon {
-            width: 42px;
-            height: 42px;
-            display: grid;
-            place-items: center;
-            border-radius: 999px;
-            background: color-mix(in srgb, var(--wandr-accent) 14%, transparent);
-          }
-
-          .wandr-summary-icon ha-icon,
-          .wandr-button ha-icon,
-          .wandr-row ha-icon,
-          .wandr-field ha-icon,
-          .wandr-metric ha-icon { color: var(--wandr-accent); }
-
-          .wandr-route-name {
-            font-size: 22px;
-            font-weight: 900;
-            line-height: 1.1;
-            margin: 0 0 4px;
-          }
-
-          .wandr-muted,
-          .wandr-label,
-          .wandr-row small,
-          .wandr-field small { color: var(--secondary-text-color); }
-
-          .wandr-help { margin: 0 0 12px; line-height: 1.35; }
-          .wandr-card-title { font-weight: 850; font-size: 18px; margin-bottom: 4px; }
-          .wandr-grid { display: grid; gap: 10px; }
-          .wandr-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-          .wandr-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-          .wandr-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-          .wandr-list { display: grid; gap: 8px; }
-          .wandr-actions-row { margin-top: 10px; }
-
-          .wandr-button,
-          .wandr-row,
-          .wandr-field,
-          .wandr-metric {
-            border: 1px solid var(--divider-color);
-            background: var(--card-background-color);
-            color: var(--primary-text-color);
-            border-radius: calc(var(--wandr-radius) - 6px);
-            cursor: pointer;
-            font: inherit;
-            min-width: 0;
-          }
-
-          .wandr-button {
-            min-height: 58px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 5px;
-            font-weight: 750;
-          }
-
-          .wandr-primary {
-            background: color-mix(in srgb, var(--wandr-accent) 18%, transparent);
-            border-color: color-mix(in srgb, var(--wandr-accent) 42%, var(--divider-color));
-          }
-
-          .wandr-warning ha-icon { color: var(--warning-color); }
-
-          .wandr-row,
-          .wandr-field {
-            min-height: 48px;
-            padding: 9px 11px;
-            display: grid;
-            grid-template-columns: 28px minmax(0, 1fr) auto;
-            align-items: center;
-            gap: 9px;
-            text-align: left;
-          }
-
-          .wandr-field {
-            grid-template-columns: 28px minmax(0, 1fr);
-          }
-
-          .wandr-row span,
-          .wandr-field span { min-width: 0; }
-          .wandr-label { display: block; font-size: 12px; }
-          .wandr-value { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 750; }
-          .wandr-row small,
-          .wandr-field small { display: block; font-size: 11px; margin-top: 2px; }
-
-          .wandr-progress-compact {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 10px;
-          }
-
-          .wandr-metric {
-            min-height: 94px;
-            padding: 10px;
-            display: grid;
-            justify-items: center;
-            align-content: center;
-            gap: 5px;
-            text-align: center;
-          }
-
-          .wandr-metric ha-icon {
-            width: 30px;
-            height: 30px;
-            padding: 9px;
-            border-radius: 999px;
-            background: color-mix(in srgb, var(--wandr-accent) 18%, transparent);
-          }
-
-          .wandr-metric strong { font-size: 24px; font-weight: 900; }
-          .wandr-metric span:last-child { color: var(--secondary-text-color); font-size: 12px; }
-          .wandr-secondary-actions { margin-top: 10px; }
-
-          @media (max-width: 900px) {
-            .wandr-inner { grid-template-columns: 1fr; }
-          }
-
-          @media (max-width: 600px) {
-            .wandr-inner { padding: 12px; }
-            .wandr-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-            .wandr-secondary-actions { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-            .wandr-secondary-actions .wandr-button { min-height: 52px; font-size: 12px; }
-            .wandr-frame { height: var(--wandr-frame-height, 340px); }
-            .wandr-hero-stat strong { font-size: 26px; }
-            .wandr-progress-compact { grid-template-columns: 1fr 1fr 1fr; }
-            .wandr-metric { min-height: 82px; }
-            .wandr-grid-2 { grid-template-columns: 1fr; }
-          }
-        </style>
-        <div class="wandr-inner">${sectionHtml}</div>
-      </ha-card>
-    `;
-
-    this.querySelectorAll("[data-service]").forEach((button) => {
-      button.addEventListener("click", () => this._callService(button.dataset.service));
-    });
-    this.querySelectorAll("[data-entity]").forEach((button) => {
-      button.addEventListener("click", () => this._moreInfo(button.dataset.entity));
-    });
-    this.querySelectorAll("[data-url]").forEach((button) => {
-      button.addEventListener("click", () => this._openUrl(button.dataset.url, button.dataset.fallbackUrl));
-    });
-
-    this._rendered = true;
-  }
-
-  _updateDynamicValues() {
-    if (!this._hass || !this._rendered) return;
-
-    this.querySelectorAll("[data-state]").forEach((node) => {
-      node.textContent = this._state(node.dataset.state);
-    });
-
-    const summary = this.querySelector("[data-summary='route']");
-    if (summary) summary.textContent = this._formatSummary();
-
-    const climb = this.querySelector("[data-climb-flights]");
-    if (climb) climb.textContent = this._climbFlights();
-  }
+  _loadLeaflet(){if(this._leafletPromise)return this._leafletPromise;this._leafletPromise=new Promise((res,rej)=>{if(window.L)return res();if(!document.querySelector('link[data-wandr-leaflet]')){const l=document.createElement('link');l.rel='stylesheet';l.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';l.dataset.wandrLeaflet='1';document.head.appendChild(l);}const ex=document.querySelector('script[data-wandr-leaflet]');if(ex){ex.addEventListener('load',res,{once:true});ex.addEventListener('error',rej,{once:true});return;}const s=document.createElement('script');s.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';s.dataset.wandrLeaflet='1';s.onload=res;s.onerror=rej;document.head.appendChild(s);});return this._leafletPromise;}
+  async _routeJson(){const r=await fetch(`${this._config.json_url}?v=108&ts=${Date.now()}`,{cache:'no-store',headers:{'Cache-Control':'no-cache'}});if(!r.ok)throw new Error(`current_route.json ${r.status}`);return r.json();}
+  async _draw(route){const coords=Array.isArray(route?.coords)?route.coords:[];await this._loadLeaflet();const el=this.shadowRoot.getElementById('map');if(!this._map){this._map=L.map(el,{zoomControl:true});L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{maxZoom:20,attribution:'&copy; OpenStreetMap contributors &copy; CARTO'}).addTo(this._map);}[this._line,this._start,this._end].forEach(x=>x&&this._map.removeLayer(x));this._line=this._start=this._end=null;if(!coords.length){this._map.setView([39.8283,-98.5795],4);return;}this._line=L.polyline(coords,{weight:6,color:'#2f80ed'}).addTo(this._map);const same=JSON.stringify(coords[0])===JSON.stringify(coords[coords.length-1]);this._start=L.marker(coords[0]).addTo(this._map).bindPopup(same?'Start / End':'Start');if(!same)this._end=L.marker(coords[coords.length-1]).addTo(this._map).bindPopup('End');this._map.fitBounds(this._line.getBounds(),{padding:[22,22]});setTimeout(()=>this._map.invalidateSize(),120);}
+  async _action(a){const press=id=>this._press(id);if(a==='previous')return press('button.wandr_previous_route');if(a==='random')return press('button.wandr_random_route');if(a==='next')return press('button.wandr_next_route');if(a==='today')return press('button.wandr_pick_today_route');if(a==='done')return press('button.wandr_mark_completed');if(a==='open'){const u=this._value('sensor.wandr_preferred_map_url')||this._value('sensor.wandr_google_maps_url');if(u)window.location.href=u;}}
+  _optionsFrom(id){return this._state(id)?.attributes?.options||[];}
+  _fillSelect(id,opts,sel){const s=this.shadowRoot.getElementById(id);if(!s)return;const html=opts.map(o=>`<option value="${this._esc(o)}" ${o===sel?'selected':''}>${this._esc(o)}</option>`).join('');if(s.innerHTML!==html)s.innerHTML=html;if(sel)s.value=sel;}
+  _setText(id,value){return this._hass?.callService('text','set_value',{entity_id:id,value});}
+  _press(id){return this._hass?.callService('button','press',{entity_id:id});}
+  _pickStreet(o){if(!o||o==='No streets available')return;this._hass?.callService('select','select_option',{entity_id:'select.wandr_current_route_street',option:o});this._setText('text.wandr_street_to_avoid',o);}
+  _selectBlocked(o){if(!o||o==='No blocked sections')return;this._hass?.callService('select','select_option',{entity_id:'select.wandr_blocked_street_section',option:o});}
+  _esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 }
 
-class WandrDailyCard extends WandrCard {
-  static getStubConfig() { return { layout: "daily" }; }
-  setConfig(config = {}) { super.setConfig({ ...config, layout: "daily" }); }
+class WandrCardEditor extends HTMLElement{
+  constructor(){super();this.attachShadow({mode:'open'});this._config={};}
+  setConfig(config){this._config={view:'route',...(config||{})};this._render();}
+  set hass(hass){this._hass=hass;}
+  _render(){this.shadowRoot.innerHTML=`<style>.field{margin:12px 0}label{display:block;font-size:12px;opacity:.7;margin-bottom:6px}select,input{width:100%;box-sizing:border-box;padding:10px;border-radius:8px;border:1px solid var(--divider-color);background:var(--card-background-color);color:var(--primary-text-color);font:inherit}</style><div class="field"><label>Card content</label><select id="view"><option value="route">Route + map</option><option value="avoid">Avoid list</option><option value="generate">Generate</option><option value="navigate">Navigate</option><option value="progress">Progress</option><option value="files">Files</option></select></div><div class="field"><label>Route entity</label><input id="routeEntity"></div><div class="field"><label>Route JSON URL</label><input id="jsonUrl"></div>`;this.shadowRoot.getElementById('view').value=this._config.view||'route';this.shadowRoot.getElementById('routeEntity').value=this._config.route_entity||'sensor.wandr_route_name';this.shadowRoot.getElementById('jsonUrl').value=this._config.json_url||'/local/wandr/current_route.json';this.shadowRoot.querySelectorAll('select,input').forEach(el=>el.addEventListener('change',()=>this._changed()));}
+  _changed(){const c={...this._config,view:this.shadowRoot.getElementById('view').value,route_entity:this.shadowRoot.getElementById('routeEntity').value,json_url:this.shadowRoot.getElementById('jsonUrl').value};this._config=c;this.dispatchEvent(new CustomEvent('config-changed',{detail:{config:c},bubbles:true,composed:true}));}
 }
 
-class WandrPlannerCard extends WandrCard {
-  static getStubConfig() { return { layout: "planner" }; }
-  setConfig(config = {}) { super.setConfig({ ...config, layout: "planner" }); }
-}
-
-class WandrAvoidCard extends WandrCard {
-  static getStubConfig() { return { layout: "avoid" }; }
-  setConfig(config = {}) { super.setConfig({ ...config, layout: "avoid" }); }
-}
-
-class WandrStatsCard extends WandrCard {
-  static getStubConfig() { return { layout: "stats" }; }
-  setConfig(config = {}) { super.setConfig({ ...config, layout: "stats" }); }
-}
-
-customElements.define("wandr-card", WandrCard);
-customElements.define("wandr-daily-card", WandrDailyCard);
-customElements.define("wandr-planner-card", WandrPlannerCard);
-customElements.define("wandr-avoid-card", WandrAvoidCard);
-customElements.define("wandr-stats-card", WandrStatsCard);
-
-window.customCards = window.customCards || [];
-window.customCards.push(
-  {
-    type: "wandr-daily-card",
-    name: "wandr Daily Walk",
-    description: "App-style daily route card with hero stats, map, route controls, and compact progress.",
-  },
-  {
-    type: "wandr-planner-card",
-    name: "wandr Route Planner",
-    description: "Route setup card for loop routes, A-to-B destinations, style, pace, and generation controls.",
-  },
-  {
-    type: "wandr-avoid-card",
-    name: "wandr Avoid Segments",
-    description: "Street recognition, manual avoid input, blocked section list, add/remove actions, and regeneration.",
-  },
-  {
-    type: "wandr-stats-card",
-    name: "wandr Stats",
-    description: "Progress card for monthly miles, streak, weekly walks, and weekly distance.",
-  },
-  {
-    type: "wandr-card",
-    name: "wandr Custom Layout",
-    description: "Advanced configurable wandr card using layout: custom and sections.",
-  },
-);
+customElements.define('wandr-card',WandrCard);
+customElements.define('wandr-card-editor',WandrCardEditor);
+window.customCards=window.customCards||[];
+window.customCards.push({type:'wandr-card',name:'wandr Card',description:'One wandr card with a visual-editor dropdown for Route, Avoid List, Generate, Navigate, Progress, or Files.'});
