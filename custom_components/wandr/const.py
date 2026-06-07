@@ -11,9 +11,15 @@ GENERATION_TYPES = [
     "Loop route",
     "A-to-B route",
 ]
+
 DEFAULT_TARGET_MILES = 3.0
 DEFAULT_ROUTE_COUNT = 183
-DEFAULT_RADIUS_METERS = 3000
+
+# 5-mile local walking graph radius.
+# 5 miles = 8046.72 meters.
+DEFAULT_RADIUS_METERS = 8047
+LOCAL_GRAPH_RADIUS_METERS = 8047
+
 DEFAULT_WALKING_MINUTES_PER_MILE = 20
 DEFAULT_AB_EXTRA_MODE = "Desired total distance"
 DEFAULT_AB_EXTRA_PERCENT = 25.0
@@ -27,6 +33,7 @@ A_TO_B_GOAL_MODES = [
     "Time over optimal",
     "Finish by time",
 ]
+
 DEFAULT_AUTO_PICK_DAILY_ROUTE = False
 DEFAULT_DAILY_PICK_TIME = "06:00:00"
 DEFAULT_ROUTE_STYLE = "Balanced"
@@ -38,6 +45,7 @@ ROUTE_STYLES = [
     "Direct-ish",
     "Parks / Paths",
 ]
+
 DEFAULT_MAP_APP = "Ask every time"
 MAP_APPS = [
     "Ask every time",
@@ -46,4 +54,5 @@ MAP_APPS = [
     "Waze",
     "OpenStreetMap",
 ]
+
 DEFAULT_ALLOW_RELAXED_FALLBACK = True
