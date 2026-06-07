@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.1.1-beta
+
+- Simplified the Home Assistant setup flow.
+- Setup now only asks for:
+  - Start / home address
+  - Desired daily loop miles
+- Moved advanced controls out of first setup and into runtime dashboard/card/entity controls.
+- Default setup now creates a loop-mode wandr instance using sensible defaults:
+  - 183 base routes
+  - 3-mile target unless changed
+  - 20 minutes per mile
+  - Balanced route style
+  - Relaxed fallback enabled
+- A-to-B settings, route style, route count, pace, map app, and fallback behavior remain editable after setup.
+
 ## 1.1.0-beta
 
 - Replaced coordinator monkey-patching with `EnhancedWandrCoordinator`.
