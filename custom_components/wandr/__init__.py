@@ -7,22 +7,17 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 
 from .const import DOMAIN, PLATFORMS
-from .coordinator import WandrCoordinator
 from . import coordinator as wandr_coordinator
+from .enhanced_coordinator import EnhancedWandrCoordinator
 from .map_html import render_map_html as live_render_map_html
-from .route_library import patch_route_library
-from .auto_library import patch_auto_library_generation
 
 _LOGGER = logging.getLogger(__name__)
 FRONTEND_DIR = Path(__file__).parent / "frontend"
 
 
 async def _register_frontend_path(hass: HomeAssistant) -> None:
-    """Register the bundled Lovelace card path when supported by this HA version.
+    """Register the bundled Lovelace card path when supported by this HA version."""
 
-    The backend integration must keep loading even if frontend registration changes
-    across Home Assistant versions.
-    """
     try:
         from homeassistant.components.http import StaticPathConfig
 
@@ -31,34 +26,36 @@ async def _register_frontend_path(hass: HomeAssistant) -> None:
             _LOGGER.debug("async_register_static_paths unavailable; frontend card path not registered")
             return
 
-        await register_paths([
-            StaticPathConfig(
-                f"/{DOMAIN}/frontend",
-                str(FRONTEND_DIR),
-                False,
-            )
-        ])
+        await register_paths(
+            [
+                StaticPathConfig(
+                    f"/{DOMAIN}/frontend",
+                    str(FRONTEND_DIR),
+                    False,
+                )
+            ]
+        )
     except Exception as err:
         _LOGGER.warning(
-            "Could not register wandr frontend card path. The integration will still run, but the bundled Lovelace card may need to be loaded manually: %s",
+            "Could not register wandr frontend card path. The integration will still run, "
+            "but the bundled Lovelace card may need to be loaded manually: %s",
             err,
         )
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    # Keep the live map HTML renderer override, but stop monkey-patching the coordinator.
     wandr_coordinator.render_map_html = live_render_map_html
-    patch_route_library(WandrCoordinator)
-    patch_auto_library_generation(WandrCoordinator)
 
-    coordinator = WandrCoordinator(hass, entry)
+    coordinator = EnhancedWandrCoordinator(hass, entry)
     await coordinator.async_load()
+
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
 
     await _register_frontend_path(hass)
-
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    async def get_coord() -> WandrCoordinator:
+    async def get_coord() -> EnhancedWandrCoordinator:
         return hass.data[DOMAIN][entry.entry_id]
 
     async def generate_year(call: ServiceCall):
@@ -134,6 +131,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.services.async_register(DOMAIN, "clear_history", clear_history)
     hass.services.async_register(DOMAIN, "export_settings", export_settings)
     hass.services.async_register(DOMAIN, "import_settings", import_settings)
+
     return True
 
 
@@ -141,7 +139,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator = hass.data.get(DOMAIN, {}).get(entry.entry_id)
     if coordinator:
         await coordinator.shutdown()
+
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id, None)
+
     return unload_ok
