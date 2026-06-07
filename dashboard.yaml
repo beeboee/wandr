@@ -3,30 +3,30 @@ path: wandr
 icon: mdi:walk
 type: sections
 max_columns: 2
+
 sections:
   - type: grid
     cards:
       - type: custom:wandr-card
         view: route
+        route_mode: current
         route_entity: sensor.wandr_route_name
         json_url: /local/wandr/current_route.json
 
   - type: grid
     cards:
       - type: custom:wandr-card
-        view: avoid
+        view: generate
+        route_mode: loop
 
-  - type: grid
-    cards:
       - type: custom:wandr-card
         view: generate
+        route_mode: a_to_b
 
       - type: entities
         title: Route Settings
         show_header_toggle: false
         entities:
-          - entity: select.wandr_generation_type
-            name: Type
           - entity: text.wandr_start_address
             name: Start
           - entity: text.wandr_end_address
@@ -60,8 +60,13 @@ sections:
   - type: grid
     cards:
       - type: custom:wandr-card
+        view: avoid
+
+      - type: custom:wandr-card
         view: navigate
 
+  - type: grid
+    cards:
       - type: custom:wandr-card
         view: progress
 
