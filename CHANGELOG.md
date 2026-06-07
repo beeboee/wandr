@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.2-beta
+
+- Added local walking graph caching.
+- wandr now fetches the nearby OSM walking graph once, stores it locally, and reuses it for future route generation.
+- Default local graph radius is now 5 miles / 8047 meters.
+- Route generation now uses the cached local graph instead of calling Overpass every time.
+- Added multiple Overpass endpoint fallbacks for the initial graph fetch.
+- Added local graph cache metadata to coordinator state.
+- Improved avoid-list matching so partial/common names like `Lombard` and `Interstate Ave` can match OSM names like `North Lombard Street` and `North Interstate Avenue`.
+
 ## 1.1.1-beta
 
 - Simplified the Home Assistant setup flow.
