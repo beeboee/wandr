@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.1.0-beta
+
+- Replaced coordinator monkey-patching with `EnhancedWandrCoordinator`.
+- Moved compact route-library writing into the coordinator layer.
+- Moved guarded first-run loop-library generation into the coordinator layer.
+- Bulk route-library auto-generation only runs for loop/circle mode when a start/home address exists, no routes are loaded, and the current home/settings signature has not already been attempted.
+- Replaced per-route export spam with compact route library files:
+  - `/local/wandr/routes/index.json`
+  - `/local/wandr/routes/routes.min.json`
+  - `/local/wandr/routes/routes.pretty.json`
+- Kept current-route exports available:
+  - `/local/wandr/current_route.json`
+  - `/local/wandr/current_route.html`
+  - `/local/wandr/current_directions.html`
+  - `/local/wandr/current_route.gpx`
+  - `/local/wandr/current_route.geojson`
+- Updated `custom:wandr-card` so Loop vs A-to-B presentation is card-specific via `route_mode`.
+- Added visual-editor support for card content and card route mode.
+- 
 ## 1.0.9-beta
 
 - Changed bulk route-library generation to be guarded and first-run only.
