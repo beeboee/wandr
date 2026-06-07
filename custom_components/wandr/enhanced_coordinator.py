@@ -6,18 +6,11 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from .coordinator import (
-    WandrCoordinator as BaseWandrCoordinator,
-    exportable_settings,
-    render_directions_html,
-    render_geojson,
-    render_gpx,
-    render_map_html,
-)
+from .coordinator import WandrCoordinator, exportable_settings, render_map_html
 
 _LOGGER = logging.getLogger(__name__)
 AUTO_DELAY_SECONDS = 90
 
 
-class EnhancedWandrCoordinator(BaseWandrCoordinator):
-    """Coordinator with explicit route-library
+class EnhancedWandrCoordinator(WandrCoordinator):
+    """Coordinator with built-in compact route library
