@@ -1,0 +1,13 @@
+<svg width="900" height="520" viewBox="0 0 900 520" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">wandr logo</title>
+  <desc id="desc">A green dashed wandering path forming a loose curvy W shape above the word wandr.</desc>
+  <path d="M165 165
+           C215 155 235 185 220 230
+           C202 285 255 312 315 292
+           C390 267 365 152 450 155
+           C528 158 488 282 565 296
+           C625 307 675 272 664 210
+           C654 154 716 142 770 104" stroke="#24B33B" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="28 31"></path>
+  <path d="M728 101 L779 94 L772 145" stroke="#24B33B" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"></path>
+  <text x="450" y="430" text-anchor="middle" font-family="Inter, ui-rounded, Avenir Next, Nunito, Arial Rounded MT Bold, Arial, sans-serif" font-size="116" font-weight="700" letter-spacing="8" fill="#24B33B">wandr</text>
+</svg>
