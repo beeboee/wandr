@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.3-beta
+
+- Added `button.wandr_clear_stored_routes`.
+- Added a Clear Stored Routes action to the Generate card.
+- Clearing stored routes removes the generated route list and current route pointer.
+- Clearing stored routes keeps user settings, avoid list, walking history, and local walking graph cache.
+- This makes it easier to wipe old pre-1.1 route libraries before regenerating from the local graph cache.
+
 ## 1.1.2-beta
 
 - Added local walking graph caching.
