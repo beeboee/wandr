@@ -722,7 +722,16 @@ class WandrCard extends HTMLElement {
     this._end = null;
 
     if (!coords.length) {
-      this._map.setView([39.8283, -98.5795], 4);
+      const homeLat = Number(this._hass?.config?.latitude);
+      const homeLon = Number(this._hass?.config?.longitude);
+    
+      if (Number.isFinite(homeLat) && Number.isFinite(homeLon)) {
+        this._map.setView([homeLat, homeLon], 15);
+      } else {
+        this._map.setView([45.574544, -122.679792], 15);
+      }
+    
+      setTimeout(() => this._map.invalidateSize(), 120);
       return;
     }
 
