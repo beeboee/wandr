@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.1.5-beta
+
+- Added local graph diagnostic sensors.
+- Improved debugging for generation failures and cache behavior.
+- Recommended cache-busted frontend resource loading for the wandr card.
+- Updated empty-route map fallback guidance to zoom near the Home Assistant home location.
+
+## 1.1.4-beta
+
+- Fixed removing the final avoid-list item.
+- The remove action now removes the only blocked item even when Home Assistant's select entity is showing it but the internal selected value is blank.
+- Added a transparent SVG logo source.
+
 ## 1.1.3-beta
 
 - Added `button.wandr_clear_stored_routes`.
