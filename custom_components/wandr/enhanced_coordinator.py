@@ -16,6 +16,7 @@ from .coordinator import (
     render_geojson,
     render_gpx,
     render_map_html,
+    section_label,
 )
 from .local_graph import async_get_local_walking_graph_data
 
@@ -66,9 +67,6 @@ class EnhancedWandrCoordinator(WandrCoordinator):
     async def update_option(self, key: str, value: Any, *, regenerate: bool = False):
         await super().update_option(key, value, regenerate=regenerate)
 
-        # If the user adds a home/start address or switches back to loop mode,
-        # do the first-run route library generation, but only if it is actually
-        # needed.
         if key in {
             "start_address",
             "loop_route",
@@ -101,12 +99,76 @@ class EnhancedWandrCoordinator(WandrCoordinator):
             self.state["library_status"] = "Ready"
             self.state["library_error"] = ""
             self.state["library_route_count"] = len(self.state.get("routes") or [])
-            self.state["library_base_count"] = int(self.state.get("route_count") or self.entry.data.get("route_count") or 0)
+            self.state["library_base_count"] = int(
+                self.state.get("route_count") or self.entry.data.get("route_count") or 0
+            )
             await self.save()
+
         elif self.state.get("generation_status") == "Error":
             self.state["library_status"] = "Error"
             self.state["library_error"] = self.state.get("last_error", "")
             await self.save()
+
+    async def remove_selected_blocked_section(self):
+        """Remove the selected avoid-list item.
+
+        This is intentionally more forgiving than the base coordinator.
+
+        The HA select entity can visually show the only blocked item even when
+        selected_blocked_section is internally empty. In that case, pressing
+        Remove used to do nothing. If there is exactly one blocked item, remove
+        it even when the selected value is blank/stale.
+        """
+
+        sections = list(self.state.get("blocked_sections") or [])
+
+        if not sections:
+            self.state["selected_blocked_section"] = ""
+            self.state["last_error"] = ""
+            self.state["generation_status"] = "Avoid list already empty"
+            self.state["last_generation_summary"] = "There are no blocked streets or sections to remove."
+            await self.save()
+            return
+
+        selected = (self.state.get("selected_blocked_section") or "").strip()
+        labels = [section_label(section) for section in sections]
+
+        if selected and selected in labels:
+            removed_label = selected
+            remaining = [
+                section
+                for section in sections
+                if section_label(section) != selected
+            ]
+
+        elif len(sections) == 1:
+            removed_label = labels[0]
+            remaining = []
+
+        else:
+            self.state["last_error"] = "Pick an avoid-list item before removing it."
+            self.state["generation_status"] = "Avoid remove needs selection"
+            self.state["last_generation_summary"] = (
+                "More than one avoid-list item exists. Pick one from the Existing block dropdown first."
+            )
+            await self.save()
+            return
+
+        self.state["blocked_sections"] = remaining
+        self.state["selected_blocked_section"] = section_label(remaining[0]) if remaining else ""
+
+        # Keep the text fields in sync when the list is emptied.
+        if not remaining:
+            self.state["feedback_street"] = ""
+            self.state["feedback_from_cross"] = ""
+            self.state["feedback_to_cross"] = ""
+
+        self.state["last_error"] = ""
+        self.state["generation_status"] = "Avoid rule removed"
+        self.state["last_generation_summary"] = (
+            f"Removed avoid rule: {removed_label}. Press Generate Routes to rebuild routes around the updated avoid list."
+        )
+        await self.save()
 
     async def _download_graph(
         self,
@@ -131,7 +193,10 @@ class EnhancedWandrCoordinator(WandrCoordinator):
 
         self.state["local_graph_cache_status"] = cache_meta.get("status", "unknown")
         self.state["local_graph_cache_path"] = cache_meta.get("path", "")
-        self.state["local_graph_radius_miles"] = round((cache_meta.get("radius_meters") or radius) / M_PER_MILE, 2)
+        self.state["local_graph_radius_miles"] = round(
+            (cache_meta.get("radius_meters") or radius) / M_PER_MILE,
+            2,
+        )
         self.state["local_graph_element_count"] = cache_meta.get("element_count", 0)
         self.state["local_graph_source"] = cache_meta.get("source_url", "")
 
@@ -154,23 +219,33 @@ class EnhancedWandrCoordinator(WandrCoordinator):
                 highway = tags.get("highway", "")
                 match_name = normalize_street_match_text(name)
 
-                if any(blocked and (blocked in match_name or match_name in blocked) for blocked in normalized_blacklist):
+                if any(
+                    blocked and (blocked in match_name or match_name in blocked)
+                    for blocked in normalized_blacklist
+                ):
                     continue
 
                 raw_ways.append(([int(n) for n in el.get("nodes", [])], name, highway))
 
         node_streets: dict[int, set[str]] = {}
+
         for way_nodes, name, _highway in raw_ways:
             match_name = normalize_street_match_text(name)
-            if match_name:
-                for n in way_nodes:
-                    node_streets.setdefault(n, set()).add(match_name)
 
-        sections = [normalize_section_for_matching(s) for s in blocked_sections]
-        graph: dict[int, list[Edge]] = {n: [] for n in nodes}
+            if match_name:
+                for node_id in way_nodes:
+                    node_streets.setdefault(node_id, set()).add(match_name)
+
+        sections = [normalize_section_for_matching(section) for section in blocked_sections]
+        graph: dict[int, list[Edge]] = {node_id: [] for node_id in nodes}
 
         for way_nodes, name, highway in raw_ways:
-            blocked_ranges = blocked_index_ranges_for_matching(way_nodes, name, node_streets, sections)
+            blocked_ranges = blocked_index_ranges_for_matching(
+                way_nodes,
+                name,
+                node_streets,
+                sections,
+            )
 
             for idx, (a, b) in enumerate(zip(way_nodes[:-1], way_nodes[1:])):
                 if a not in nodes or b not in nodes:
@@ -179,37 +254,36 @@ class EnhancedWandrCoordinator(WandrCoordinator):
                 if edge_index_blocked(idx, blocked_ranges):
                     continue
 
-                d = haversine(nodes[a][0], nodes[a][1], nodes[b][0], nodes[b][1])
-                graph[a].append(Edge(b, d, name, highway))
-                graph[b].append(Edge(a, d, name, highway))
+                distance = haversine(nodes[a][0], nodes[a][1], nodes[b][0], nodes[b][1])
+                graph[a].append(Edge(b, distance, name, highway))
+                graph[b].append(Edge(a, distance, name, highway))
 
         if not nodes:
             raise RuntimeError("No walkable street data returned. Try again later or remove avoid-list items.")
 
-        start_node = min(nodes, key=lambda n: haversine(start_lat, start_lon, nodes[n][0], nodes[n][1]))
-        end_node = min(nodes, key=lambda n: haversine(end_lat, end_lon, nodes[n][0], nodes[n][1]))
+        start_node = min(
+            nodes,
+            key=lambda node_id: haversine(
+                start_lat,
+                start_lon,
+                nodes[node_id][0],
+                nodes[node_id][1],
+            ),
+        )
+        end_node = min(
+            nodes,
+            key=lambda node_id: haversine(
+                end_lat,
+                end_lon,
+                nodes[node_id][0],
+                nodes[node_id][1],
+            ),
+        )
 
         return graph, nodes, start_node, end_node
 
     async def _write_artifacts(self):
-        """Write current route artifacts and a compact local route library.
-
-        This intentionally does NOT write GPX/GeoJSON/HTML for every route on
-        every save. That was wasteful and made the integration feel heavier than
-        it needed to be.
-
-        Current route files stay available:
-        - /local/wandr/current_route.json
-        - /local/wandr/current_route.html
-        - /local/wandr/current_directions.html
-        - /local/wandr/current_route.gpx
-        - /local/wandr/current_route.geojson
-
-        Library files:
-        - /local/wandr/routes/index.json
-        - /local/wandr/routes/routes.min.json
-        - /local/wandr/routes/routes.pretty.json
-        """
+        """Write current route artifacts and a compact local route library."""
 
         www = Path(self.hass.config.path("www/wandr"))
         route = self.current_route
@@ -261,11 +335,14 @@ class EnhancedWandrCoordinator(WandrCoordinator):
 
         except asyncio.CancelledError:
             raise
+
         except Exception as err:
             _LOGGER.exception("wandr automatic route-library generation failed")
             signature = self._library_signature()
+
             if signature:
                 self.state["route_library_auto_attempted_signature"] = signature
+
             self.state["library_status"] = "Auto-generation failed"
             self.state["generation_status"] = "Auto-generation failed"
             self.state["library_error"] = str(err)
@@ -274,6 +351,7 @@ class EnhancedWandrCoordinator(WandrCoordinator):
 
     def _should_auto_generate_library(self) -> bool:
         signature = self._library_signature()
+
         if not signature:
             return False
 
@@ -283,8 +361,6 @@ class EnhancedWandrCoordinator(WandrCoordinator):
         if self.state.get("route_library_auto_attempted_signature") == signature:
             return False
 
-        # Important: do not auto-regenerate if routes already exist. Manual
-        # Generate Routes remains the intentional rebuild action.
         if self.state.get("routes"):
             return False
 
@@ -300,7 +376,6 @@ class EnhancedWandrCoordinator(WandrCoordinator):
         start_address = (opt("start_address", "") or "").strip()
         loop_route = bool(opt("loop_route", True))
 
-        # Auto library generation is loop/circle only. A-to-B is user-requested.
         if not loop_route or not start_address:
             return None
 
@@ -314,18 +389,18 @@ class EnhancedWandrCoordinator(WandrCoordinator):
         blocked_key = repr(
             sorted(
                 (
-                    normalize_street_match_text(s.get("street", "") or ""),
-                    normalize_street_match_text(s.get("from", "") or ""),
-                    normalize_street_match_text(s.get("to", "") or ""),
+                    normalize_street_match_text(section.get("street", "") or ""),
+                    normalize_street_match_text(section.get("from", "") or ""),
+                    normalize_street_match_text(section.get("to", "") or ""),
                 )
-                for s in blocked_sections
+                for section in blocked_sections
             )
         )
 
         return "|".join(
             [
                 f"home={start_address.lower()}",
-                f"mode=loop",
+                "mode=loop",
                 f"count={route_count}",
                 f"miles={target_miles:.2f}",
                 f"pace={pace:.2f}",
@@ -356,7 +431,7 @@ def _write_wandr_files_sync(
     routes_dir = www / "routes"
     routes_dir.mkdir(parents=True, exist_ok=True)
 
-    compact_routes = [_compact_route(route, idx) for idx, route in enumerate(routes, start=1)]
+    compact_routes = [_compact_route(route_item, idx) for idx, route_item in enumerate(routes, start=1)]
 
     index = {
         "version": 2,
@@ -383,16 +458,16 @@ def _write_wandr_files_sync(
         ),
         "routes": [
             {
-                "index": r["index"],
-                "name": r.get("name"),
-                "mode": r.get("mode"),
-                "direction": r.get("direction"),
-                "distance_miles": r.get("distance_miles"),
-                "duration_minutes": r.get("duration_minutes"),
-                "elevation_gain_ft": r.get("elevation_gain_ft"),
-                "quality_score": r.get("quality_score"),
+                "index": route_item["index"],
+                "name": route_item.get("name"),
+                "mode": route_item.get("mode"),
+                "direction": route_item.get("direction"),
+                "distance_miles": route_item.get("distance_miles"),
+                "duration_minutes": route_item.get("duration_minutes"),
+                "elevation_gain_ft": route_item.get("elevation_gain_ft"),
+                "quality_score": route_item.get("quality_score"),
             }
-            for r in compact_routes
+            for route_item in compact_routes
         ],
     }
 
@@ -405,8 +480,6 @@ def _write_wandr_files_sync(
 
 
 def _compact_route(route: dict[str, Any], index: int) -> dict[str, Any]:
-    """Keep route data compact but complete enough for the card/export layer."""
-
     return {
         "index": index,
         "name": route.get("name"),
@@ -463,17 +536,41 @@ def normalize_street_match_text(value: str) -> str:
     }
 
     text = f" {text} "
+
     for old, new in replacements.items():
         text = text.replace(old, new)
 
     edge_words = {
-        "north", "south", "east", "west", "n", "s", "e", "w",
-        "street", "st", "avenue", "ave", "boulevard", "blvd",
-        "road", "rd", "drive", "dr", "lane", "ln", "way",
-        "place", "pl", "court", "ct", "path", "trail",
+        "north",
+        "south",
+        "east",
+        "west",
+        "n",
+        "s",
+        "e",
+        "w",
+        "street",
+        "st",
+        "avenue",
+        "ave",
+        "boulevard",
+        "blvd",
+        "road",
+        "rd",
+        "drive",
+        "dr",
+        "lane",
+        "ln",
+        "way",
+        "place",
+        "pl",
+        "court",
+        "ct",
+        "path",
+        "trail",
     }
 
-    parts = [p for p in text.split() if p not in edge_words]
+    parts = [part for part in text.split() if part not in edge_words]
     return " ".join(parts)
 
 
@@ -494,27 +591,29 @@ def blocked_index_ranges_for_matching(
     ranges = []
     way_name = normalize_street_match_text(name)
 
-    for sec in sections:
-        street = sec.get("street") or ""
+    for section in sections:
+        street = section.get("street") or ""
+
         if not street:
             continue
 
         if street not in way_name and way_name not in street:
             continue
 
-        from_name = sec.get("from") or ""
-        to_name = sec.get("to") or ""
+        from_name = section.get("from") or ""
+        to_name = section.get("to") or ""
 
         if not from_name and not to_name:
             ranges.append((0, max(0, len(way_nodes) - 2)))
             continue
 
         cross_indices = []
-        for i, n in enumerate(way_nodes):
-            names = node_streets.get(n, set())
 
-            from_match = from_name and any(from_name in s or s in from_name for s in names)
-            to_match = to_name and any(to_name in s or s in to_name for s in names)
+        for i, node_id in enumerate(way_nodes):
+            names = node_streets.get(node_id, set())
+
+            from_match = from_name and any(from_name in street_name or street_name in from_name for street_name in names)
+            to_match = to_name and any(to_name in street_name or street_name in to_name for street_name in names)
 
             if from_match or to_match:
                 cross_indices.append(i)
@@ -522,9 +621,8 @@ def blocked_index_ranges_for_matching(
         if len(cross_indices) >= 2:
             a, b = min(cross_indices), max(cross_indices)
             ranges.append((a, max(a, b - 1)))
+
         else:
-            # Safer behavior: if the street matches but cross streets cannot be
-            # found, block the named street instead of silently ignoring it.
             ranges.append((0, max(0, len(way_nodes) - 2)))
 
     return ranges
