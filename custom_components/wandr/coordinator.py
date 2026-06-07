@@ -25,6 +25,7 @@ from .const import (
     STORAGE_KEY,
     STORAGE_VERSION,
     DEFAULT_RADIUS_METERS,
+    LOCAL_GRAPH_RADIUS_METERS,
     DEFAULT_START_ADDRESS,
     DEFAULT_WALKING_MINUTES_PER_MILE,
     DEFAULT_AB_EXTRA_MODE,
@@ -39,6 +40,8 @@ from .const import (
     ROUTE_STYLES,
     DEFAULT_ALLOW_RELAXED_FALLBACK,
 )
+
+from .local_graph import async_get_local_walking_graph_data
 
 _LOGGER = logging.getLogger(__name__)
 M_PER_MILE = 1609.344
