@@ -3,294 +3,271 @@
 
 # wandr for Home Assistant
 </div>
+`wandr` is a Home Assistant custom integration for generating rotating walking routes from a home/start address.
 
-**Current version:** `1.0.6-beta`
+It is meant for people who want a daily walk that stays around a target distance, changes from day to day, avoids streets or paths they dislike, and can open the current route in a map app.
 
-wandr is a Home Assistant custom integration for generating rotating walkable routes and exposing the route controls as normal Home Assistant entities, so you can build your own dashboard around it.
+## What it does
 
-It supports loop routes, A-to-B routes, configurable route goals, street/segment blocking, daily route assignment, completion tracking, route history, route style preferences, Google Maps links, GPX/GeoJSON export, and app-style dashboard cards.
+* Generates loop walking routes from a start/home address
+* Supports A-to-B route generation
+* Creates a local route library for daily rotation
+* Can generate 183 base loop routes, then mirror them clockwise/counterclockwise for 366 route instances
+* Tracks the current route, distance, estimated duration, elevation, route quality, and progress stats
+* Lets users block streets, paths, alleys, or street sections
+* Provides route controls through Home Assistant entities and a custom Lovelace card
+* Exports current route data as JSON, GPX, GeoJSON, and directions HTML
+* Writes a compact local route library under `/local/wandr/routes/`
 
-> **AI-generated code notice:** This project contains AI-generated code. Treat it as experimental community software. Review and test it before relying on it for daily use, safety decisions, or a production Home Assistant setup.
+## Current state
 
-## Current status
+`wandr` is installable through HACS as a custom repository.
 
-wandr is a beta custom integration. It is intended to be installed through HACS as a custom repository or copied manually into Home Assistant for testing.
+It is not finished. The current goal is a polished beta that works well enough for real testing while keeping the codebase simple enough to keep improving.
 
-It is not affiliated with Home Assistant, HACS, Google Maps, OpenStreetMap, Nominatim, Overpass, or OpenTopoData.
+Known rough edges:
 
-## Compatibility
+* The route generator is still prototype-level.
+* Only one active backend route library is supported at a time.
+* Loop vs A-to-B can be configured per card for UI purposes, but true simultaneous saved Loop and A-to-B libraries are not implemented yet.
+* Map-app chooser behavior depends on Android/iOS/browser defaults.
+* The custom Lovelace card may need to be manually added as a frontend resource.
 
-wandr targets Home Assistant `2024.12.0` and newer.
+## Installation through HACS
 
-Supported install types:
+### 1. Add the custom repository
 
-- Home Assistant OS / HAOS
-- Home Assistant Container / Docker
-- Home Assistant Supervised
-- Home Assistant Core / venv, best effort
+In Home Assistant:
 
-For setup-specific notes and troubleshooting, see [`SUPPORT.md`](SUPPORT.md).
-
-wandr needs outbound HTTPS access to:
-
-```text
-nominatim.openstreetmap.org
-overpass-api.de
-api.opentopodata.org
-```
-
-## Features
-
-- Loop routes or A-to-B routes
-- Start/end address editable from the Home Assistant UI
-- A-to-B goal modes:
-  - Desired total distance
-  - Distance over optimal
-  - Percent over optimal
-  - Time over optimal
-  - Finish by time
-- Route style selector:
-  - Balanced
-  - Quiet Streets
-  - Flattest
-  - Most Variety
-  - Direct-ish
-  - Parks / Paths
-- Daily route assignment
-- Completed/skipped tracking
-- History, streak, weekly, and monthly progress sensors
-- Street recognition from the current route for easier avoid rules
-- Manual street/segment blocking with optional cross-street bounds
-- Blocked-section list with remove action
-- Best-effort route quality scoring
-- Relaxed fallback mode when strict generation fails
-- Google Maps tap-to-open URL
-- Generated route map preview
-- Turn-by-turn style directions page
-- GPX and GeoJSON exports
-- Settings export/import support
-- Optional configurable Lovelace cards for building a wandr dashboard
-
-## Install with HACS
-
-[![Open your Home Assistant instance and open this repository in HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=beeboee&repository=wandr&category=integration)
-
-This is the recommended install method.
-
-1. In Home Assistant, open **HACS**.
-2. Open the three-dot menu in the top right.
-3. Choose **Custom repositories**.
-4. Paste this repository URL:
-
-   ```text
-   https://github.com/beeboee/wandr
-   ```
-
-5. Set the category to **Integration**.
-6. Click **Add**.
-7. Find **wandr** in HACS and install it.
-8. Restart Home Assistant.
-9. Add the integration:
-
-   ```text
-   Settings → Devices & services → Add integration → wandr
-   ```
-
-## Manual install
-
-Use this if you want to test wandr without HACS.
-
-1. Download this repository.
-2. Copy the `wandr` integration folder into Home Assistant:
-
-   ```text
-   /config/custom_components/wandr
-   ```
-
-3. Restart Home Assistant.
-4. Add the integration:
-
-   ```text
-   Settings → Devices & services → Add integration → wandr
-   ```
-
-For Docker/Container installs, `/config` means the Home Assistant container's config path. The host folder depends on your volume mapping.
-
-## First setup
-
-After adding the integration:
-
-1. Set your start address.
-2. Choose **Loop route** or **A-to-B route**.
-3. If using A-to-B, set your end address.
-4. Choose a route style.
-5. Choose a route goal mode.
-6. Set your desired distance, extra distance, extra time, or finish-by time depending on the selected mode.
-7. Press **Generate Routes**.
-8. Press **Pick Today Route**, **Next Route**, **Previous Route**, or **Random Route**.
-9. Open the route in Google Maps or use the generated route preview.
-10. Mark the walk complete or skipped when done.
-
-## Dashboard setup
-
-wandr includes multiple Lovelace cards. The normal card picker should show these options after the resource is loaded:
+1. Open **HACS**
+2. Go to **Integrations**
+3. Open the three-dot menu
+4. Choose **Custom repositories**
+5. Add this repository:
 
 ```text
-wandr Daily Walk
-wandr Route Planner
-wandr Avoid Segments
-wandr Stats
-wandr Custom Layout
+https://github.com/beeboee/wandr
 ```
 
-First, add this Lovelace resource:
+Category:
 
 ```text
-URL: /wandr/frontend/wandr-card.js
-Resource type: JavaScript Module
+Integration
 ```
 
-If you are updating the card and your browser keeps showing an old version, add a cache-buster:
+### 2. Install wandr
+
+After adding the custom repository:
+
+1. Search HACS for **wandr**
+2. Install it
+3. Restart Home Assistant
+
+### 3. Add the integration
+
+After restarting:
+
+1. Go to **Settings**
+2. Open **Devices & services**
+3. Click **Add integration**
+4. Search for **wandr**
+5. Enter:
+
+   * Start / home address
+   * Desired daily loop miles
+
+The setup flow is intentionally small. Most controls are changed later from the dashboard/card/entities.
+
+## First-run route generation
+
+For the normal loop-route use case, wandr can automatically build the first local route library.
+
+Automatic bulk generation only runs when:
+
+* wandr is in Loop route / circle mode
+* a start/home address exists
+* no routes are already loaded
+* the current home/settings signature has not already been attempted
+
+It waits about 90 seconds after startup/setup before generating, so Home Assistant has time to finish loading.
+
+Default behavior aims for:
 
 ```text
-/wandr/frontend/wandr-card.js?v=6
+183 base loop routes × clockwise/counterclockwise = 366 route instances
 ```
 
-### Daily Walk card
+That gives roughly a full year of daily walks, with one spare.
 
-This is the recommended main dashboard card. It is app-style and focuses on the current route.
+You can manually rebuild routes any time by pressing:
 
-```yaml
-type: custom:wandr-daily-card
+```text
+button.wandr_generate_routes
 ```
 
-Equivalent advanced form:
+or by using the Generate view in the `custom:wandr-card`.
+
+## Custom Lovelace card
+
+wandr includes one custom card:
 
 ```yaml
 type: custom:wandr-card
-layout: daily
 ```
 
-The Daily Walk card shows:
+The card has different views controlled by the `view` option.
+
+Valid views:
+
+```yaml
+view: route
+view: avoid
+view: generate
+view: navigate
+view: progress
+view: files
+```
+
+The card also supports a card-specific route mode:
+
+```yaml
+route_mode: current
+route_mode: loop
+route_mode: a_to_b
+```
+
+Important: `route_mode` controls how that card presents and requests generation. The backend still has one active route library at a time.
+
+### Add the card resource
+
+If Home Assistant does not automatically recognize the card, add this resource manually:
 
 ```text
-Distance / duration / climb
-Large route map
-A-to-B destination shortcut
-Previous / Random / Next
-Today / Maps / Done / Skip
-Compact monthly and streak stats
+/wandr/frontend/wandr-card.js
 ```
 
-### Route Planner card
-
-Use this for route setup and generation controls.
-
-```yaml
-type: custom:wandr-planner-card
-```
-
-Equivalent advanced form:
-
-```yaml
-type: custom:wandr-card
-layout: planner
-```
-
-The Route Planner card shows start/end address, route type, desired miles, pace, route style, map app, relaxed fallback, A-to-B goal settings, and generation controls.
-
-### Avoid Segments card
-
-Use this when you want to block a street or part of a street.
-
-```yaml
-type: custom:wandr-avoid-card
-```
-
-Equivalent advanced form:
-
-```yaml
-type: custom:wandr-card
-layout: avoid
-```
-
-The Avoid Segments card is designed around two workflows:
-
-1. **Recognized street workflow**
-   - Generate a route.
-   - Open the Avoid Segments card.
-   - Tap **Recognized route street** and choose a street from the current route.
-   - Optionally set **From cross street** and **To cross street**.
-   - Press **Add**.
-
-2. **Manual input workflow**
-   - Tap **Street to avoid** and type a street name.
-   - Optionally set **From cross street** and **To cross street**.
-   - Press **Add**.
-
-The blocked list is shown as **Blocked list**. Select an existing blocked segment, then press **Remove** to delete it. Press **Regenerate** afterward if you want to immediately rebuild routes around the updated avoid list.
-
-Street recognition depends on the streets present in the current generated route. Cross-street matching depends on OpenStreetMap data quality.
-
-### Stats card
-
-Use this for a compact progress card.
-
-```yaml
-type: custom:wandr-stats-card
-```
-
-Equivalent advanced form:
-
-```yaml
-type: custom:wandr-card
-layout: stats
-```
-
-### Custom layout card
-
-Advanced users can still build a custom card from sections.
-
-```yaml
-type: custom:wandr-card
-layout: custom
-sections:
-  - hero_stats
-  - map
-  - daily_controls
-  - progress_compact
-```
-
-Available custom sections:
+Resource type:
 
 ```text
-hero_stats
-summary
-map
-daily_controls
-planner
-a_to_b
-generation_controls
-avoid
-progress_compact
-progress
-export
+JavaScript module
 ```
 
-The generated route files are available at:
+In Home Assistant:
+
+1. Go to **Settings**
+2. Open **Dashboards**
+3. Open the three-dot menu
+4. Choose **Resources**
+5. Add the JavaScript module above
+6. Refresh the browser or clear frontend cache
+
+## Example dashboard cards
+
+### Route card
+
+```yaml
+type: custom:wandr-card
+view: route
+route_mode: current
+route_entity: sensor.wandr_route_name
+json_url: /local/wandr/current_route.json
+```
+
+### Loop generate card
+
+```yaml
+type: custom:wandr-card
+view: generate
+route_mode: loop
+```
+
+### A-to-B generate card
+
+```yaml
+type: custom:wandr-card
+view: generate
+route_mode: a_to_b
+```
+
+### Avoid-list card
+
+```yaml
+type: custom:wandr-card
+view: avoid
+```
+
+### Navigate card
+
+```yaml
+type: custom:wandr-card
+view: navigate
+```
+
+### Progress card
+
+```yaml
+type: custom:wandr-card
+view: progress
+```
+
+### Files card
+
+```yaml
+type: custom:wandr-card
+view: files
+```
+
+## Example dashboard
+
+This repository includes:
 
 ```text
+dashboard.yaml
+```
+
+You can copy that YAML into a Home Assistant dashboard as a starting point.
+
+The dashboard is intentionally simple. It uses the single `custom:wandr-card` type with different `view` values, then keeps deeper route settings in normal Home Assistant entity cards.
+
+## Route library files
+
+wandr writes current route files here:
+
+```text
+/local/wandr/current_route.json
 /local/wandr/current_route.html
 /local/wandr/current_directions.html
 /local/wandr/current_route.gpx
 /local/wandr/current_route.geojson
-/local/wandr/history.json
-/local/wandr/settings_export.json
 ```
+
+It writes the compact route library here:
+
+```text
+/local/wandr/routes/index.json
+/local/wandr/routes/routes.min.json
+/local/wandr/routes/routes.pretty.json
+```
+
+The compact route library is preferred over writing hundreds of per-route GPX/GeoJSON/HTML files.
+
+For 366 route instances, expected size should usually be small — likely megabytes, not gigabytes.
 
 ## Main entities
 
-Common sensors:
+Entity names may vary slightly depending on Home Assistant naming, but the integration exposes controls like:
+
+```text
+button.wandr_generate_routes
+button.wandr_next_route
+button.wandr_previous_route
+button.wandr_random_route
+button.wandr_pick_today_route
+button.wandr_mark_completed
+button.wandr_skip_today
+```
+
+Common sensors include:
 
 ```text
 sensor.wandr_route_name
@@ -299,101 +276,186 @@ sensor.wandr_estimated_duration
 sensor.wandr_elevation_gain
 sensor.wandr_generation_status
 sensor.wandr_last_generation_summary
-sensor.wandr_validation_warnings
-sensor.wandr_route_quality_score
-sensor.wandr_google_maps_url
-sensor.wandr_directions_url
-sensor.wandr_gpx_url
-sensor.wandr_geojson_url
+sensor.wandr_generated_route_count
+sensor.wandr_configured_route_count
+sensor.wandr_avoid_list
+sensor.wandr_preferred_map_url
 ```
 
-Common controls:
+Common settings include:
 
 ```text
-select.wandr_generation_type
-select.wandr_current_route_street
-select.wandr_blocked_street_section
-switch.wandr_loop_route
-switch.wandr_auto_pick_daily_route
-switch.wandr_allow_relaxed_fallback
 text.wandr_start_address
 text.wandr_end_address
-text.wandr_blacklist
-text.wandr_street_to_avoid
-text.wandr_avoid_from_cross_street
-text.wandr_avoid_to_cross_street
 number.wandr_target_miles
-number.wandr_pace
 number.wandr_base_route_count
+number.wandr_pace
+select.wandr_generation_type
 select.wandr_route_style
-select.wandr_a_to_b_goal_mode
-button.wandr_generate_routes
-button.wandr_pick_today_route
-button.wandr_next_route
-button.wandr_previous_route
-button.wandr_random_route
-button.wandr_mark_completed
-button.wandr_skip_today
-button.wandr_avoid_selected_street_section
-button.wandr_remove_blocked_street_section
+select.wandr_map_app
+switch.wandr_allow_relaxed_fallback
 ```
 
-Services:
+## Avoid-list behavior
+
+The avoid-list card lets you:
+
+* pick a recognized street from the current route
+* manually type a street, path, trail, or alley
+* optionally add from/to cross streets
+* add that item to the blocked list
+* remove selected blocked items
+* regenerate routes after changing the avoid list
+
+Use full-street blocks when you never want to use a street/path. Use from/to cross streets when only one section is bad.
+
+## A-to-B behavior
+
+A-to-B routing supports goal modes such as:
+
+* desired total distance
+* distance over optimal
+* percent over optimal
+* time over optimal
+* finish by time
+
+These are runtime settings, not setup settings.
+
+A-to-B route generation is user-requested. It does not currently auto-generate a yearly A-to-B library on first setup.
+
+## Privacy and external services
+
+wandr uses external OpenStreetMap-related data/services for geocoding, map/route graph data, and map display behavior.
+
+Do not assume routes are generated fully offline.
+
+Current external dependencies may include:
+
+* OpenStreetMap / Nominatim-style geocoding
+* Overpass-style OSM data lookup
+* tile providers used by the map preview/card
+
+Do not use this for sensitive location workflows without reviewing the code and network behavior.
+
+## Development notes
+
+The current architecture is moving toward:
+
+```text
+Base route engine:
+custom_components/wandr/coordinator.py
+
+Enhanced coordinator / library behavior:
+custom_components/wandr/enhanced_coordinator.py
+
+Lovelace UI:
+custom_components/wandr/frontend/wandr-card.js
+```
+
+Older compatibility/prototype files may still exist temporarily, but the intended direction is:
+
+* no coordinator monkey-patching
+* compact route-library storage
+* minimal setup flow
+* polished runtime UI through `custom:wandr-card`
+* normal HA entities preserved for automations
+
+## Updating
+
+After pushing or installing an update:
+
+1. Open HACS
+2. Open wandr
+3. Choose **Redownload**
+4. Restart Home Assistant
+5. Refresh browser/app cache if the old card UI sticks
+
+For frontend/card changes, mobile Companion App caching can be stubborn. A full app restart or frontend cache clear may be needed.
+
+## Troubleshooting
+
+### The custom card does not appear
+
+Add this resource manually:
+
+```text
+/wandr/frontend/wandr-card.js
+```
+
+Type:
+
+```text
+JavaScript module
+```
+
+Then refresh the frontend.
+
+### Route generation does not start
+
+Check:
+
+```text
+sensor.wandr_generation_status
+sensor.wandr_last_generation_summary
+sensor.wandr_last_error
+```
+
+Also check Home Assistant logs for:
+
+```text
+wandr
+```
+
+### I changed route count but nothing changed
+
+Changing the route count does not expand the existing library immediately.
+
+After changing:
+
+```text
+number.wandr_base_route_count
+```
+
+press:
+
+```text
+button.wandr_generate_routes
+```
+
+### I want 365+ daily routes
+
+Use loop mode and set:
+
+```text
+number.wandr_base_route_count = 183
+```
+
+Then generate routes.
+
+Loop routes are mirrored:
+
+```text
+183 base routes × 2 directions = 366 route instances
+```
+
+## Roadmap
+
+Likely next improvements:
+
+* cleaner multi-library/profile support
+* simultaneous saved Loop and A-to-B libraries
+* better route generation scoring and clustering
+* better generation progress reporting
+* better native Home Assistant card/editor behavior
+* on-demand GPX/GeoJSON export instead of writing unnecessary files
+* cleaner first-run onboarding dashboard
+* optional local-only/offline route library modes where practical
+
+<details>
+<summary>Disclaimer</summary>
 
 ```yaml
-wandr.generate_year
-wandr.next_route
-wandr.previous_route
-wandr.random_route
-wandr.pick_daily_route
-wandr.pick_today_route
-wandr.mark_completed
-wandr.skip_today
-wandr.set_blacklist
-wandr.set_a_to_b_goal
-wandr.add_blocked_section
-wandr.remove_selected_blocked_section
-wandr.export_settings
-wandr.import_settings
+> **Code note:** this project was primarily AI-generated and should be reviewed, tested, and cleaned up before being treated as production-quality software.
 ```
 
-## Street and segment blocking
-
-wandr can avoid a full street name or a street section between two cross streets.
-
-Examples:
-
-```text
-Street: N Example Alley
-From cross street: N First Ave
-To cross street: N Second Ave
-```
-
-Street-section blocking depends on OpenStreetMap data. If the street or cross streets are not mapped clearly, wandr may avoid the whole named street instead of only the requested section.
-
-## Backups and restore
-
-wandr writes a settings export here:
-
-```text
-/local/wandr/settings_export.json
-```
-
-To import settings:
-
-1. Copy the exported JSON to:
-
-   ```text
-   /config/www/wandr/settings_import.json
-   ```
-
-2. Press the **wandr Import Settings** button.
-3. Press **Generate Routes**.
-
-## Notes and limits
-
-wandr uses OpenStreetMap/Nominatim/Overpass data and best-effort elevation data. The quality of routes depends on the quality of the local map data.
-
-Route style scoring is heuristic. It can prefer quieter, flatter, more varied, or more direct routes, but it is not a safety guarantee.
-
-Always sanity-check generated routes before walking them, especially in unfamiliar areas, after dark, near highways, or around private roads/paths.
+</details>
