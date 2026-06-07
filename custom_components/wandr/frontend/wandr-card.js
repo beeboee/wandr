@@ -389,9 +389,10 @@ class WandrCard extends HTMLElement {
             </div>
           </div>
 
-          <div class="grid2 mt">
+          <div class="grid3 mt">
             <button class="primary" data-action="generate">Generate Routes</button>
             <button data-action="library">Route Library</button>
+            <button class="warn" data-action="clearRoutes">Clear Stored Routes</button>
           </div>
 
           <div class="small mt" id="summary">—</div>
@@ -405,6 +406,15 @@ class WandrCard extends HTMLElement {
 
     this.shadowRoot.querySelector('[data-action="library"]').addEventListener("click", () => {
       window.location.href = "/local/wandr/routes/index.json";
+    });
+    this.shadowRoot.querySelector('[data-action="clearRoutes"]').addEventListener("click", async () => {
+      const confirmed = window.confirm(
+        "Clear stored wandr routes? This keeps settings, avoid list, history, and the local walking graph cache."
+      );
+
+      if (!confirmed) return;
+
+      await this._press("button.wandr_clear_stored_routes");
     });
   }
 
